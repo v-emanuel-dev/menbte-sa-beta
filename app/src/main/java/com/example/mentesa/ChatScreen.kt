@@ -44,6 +44,17 @@ private val BotTextColor = Color.White
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
+    onLogin: () -> Unit = {},    // Parâmetro para login
+    onLogout: () -> Unit = {},   // Parâmetro para logout
+    chatViewModel: ChatViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel()
+) {
+    // ... resto do código permanece o mesmo
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChatScreen(
     chatViewModel: ChatViewModel = viewModel()
 ) {
     val messages by chatViewModel.messages.collectAsState()
