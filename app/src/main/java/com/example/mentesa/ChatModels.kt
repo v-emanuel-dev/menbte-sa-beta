@@ -12,6 +12,6 @@ enum class Sender {
 data class ConversationDisplayItem(
     val id: Long,
     val displayTitle: String,
-    val lastUpdated: Long,
+    val lastTimestamp: Long,  // Alterado de lastUpdated para lastTimestamp para manter consistência
     val conversationType: ConversationType = ConversationType.GENERAL
 )

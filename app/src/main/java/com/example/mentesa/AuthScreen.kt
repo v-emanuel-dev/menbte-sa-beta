@@ -44,162 +44,219 @@ fun AuthScreen(
     var showPassword by remember { mutableStateOf(false) }
     var isPasswordReset by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    // Usar Surface para aplicar o tema correto
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
-        Text(
-            text = stringResource(R.string.app_name),
-            style = MaterialTheme.typography.headlineLarge,
-            modifier = Modifier.padding(bottom = 32.dp)
-        )
-
-        if (isPasswordReset) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
             Text(
-                text = "Recuperação de Senha",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(bottom = 16.dp)
+                text = stringResource(R.string.app_name),
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(bottom = 32.dp)
             )
 
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email") },
-                leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null) },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        if (email.isNotBlank()) {
-                            authViewModel.resetPassword(email)
-                        }
-                    }
-                ),
-                singleLine = true
-            )
+            if (isPasswordReset) {
+                Text(
+                    text = "Recuperação de Senha",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = { authViewModel.resetPassword(email) },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = email.isNotEmpty() && authState != AuthState.Loading
-            ) {
-                Text("Enviar Email de Recuperação")
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            TextButton(onClick = { isPasswordReset = false }) {
-                Text("Voltar ao Login")
-            }
-        } else {
-            Text(
-                text = if (isLogin) "Login" else "Criar Conta",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email") },
-                leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null) },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                ),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Senha") },
-                leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
-                trailingIcon = {
-                    IconButton(onClick = { showPassword = !showPassword }) {
-                        Icon(
-                            if (showPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                            contentDescription = if (showPassword) "Esconder senha" else "Mostrar senha"
-                        )
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        if (email.isNotBlank() && password.isNotBlank()) {
-                            if (isLogin) {
-                                authViewModel.loginWithEmail(email, password)
-                            } else {
-                                authViewModel.registerWithEmail(email, password)
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null) },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Email,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            if (email.isNotBlank()) {
+                                authViewModel.resetPassword(email)
                             }
                         }
+                    ),
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                        unfocusedIndicatorColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = { authViewModel.resetPassword(email) },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = email.isNotEmpty() && authState != AuthState.Loading,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        disabledContainerColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.12f)
+                    )
+                ) {
+                    Text("Enviar Email de Recuperação")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                TextButton(
+                    onClick = { isPasswordReset = false },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Voltar ao Login")
+                }
+            } else {
+                Text(
+                    text = if (isLogin) "Login" else "Criar Conta",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null) },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Email,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                    ),
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                        unfocusedIndicatorColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Senha") },
+                    leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
+                    trailingIcon = {
+                        IconButton(onClick = { showPassword = !showPassword }) {
+                            Icon(
+                                if (showPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                contentDescription = if (showPassword) "Esconder senha" else "Mostrar senha"
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            if (email.isNotBlank() && password.isNotBlank()) {
+                                if (isLogin) {
+                                    authViewModel.loginWithEmail(email, password)
+                                } else {
+                                    authViewModel.registerWithEmail(email, password)
+                                }
+                            }
+                        }
+                    ),
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                        unfocusedIndicatorColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        if (isLogin) {
+                            authViewModel.loginWithEmail(email, password)
+                        } else {
+                            authViewModel.registerWithEmail(email, password)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = email.isNotEmpty() && password.isNotEmpty() && authState != AuthState.Loading,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        disabledContainerColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.12f)
+                    )
+                ) {
+                    Text(if (isLogin) "Entrar" else "Registrar")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                TextButton(
+                    onClick = { isLogin = !isLogin },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text(if (isLogin) "Criar uma Nova Conta" else "Já Tenho uma Conta")
+                }
+
+                if (isLogin) {
+                    TextButton(
+                        onClick = { isPasswordReset = true },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Text("Esqueci Minha Senha")
                     }
-                ),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = {
-                    if (isLogin) {
-                        authViewModel.loginWithEmail(email, password)
-                    } else {
-                        authViewModel.registerWithEmail(email, password)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = email.isNotEmpty() && password.isNotEmpty() && authState != AuthState.Loading
-            ) {
-                Text(if (isLogin) "Entrar" else "Registrar")
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            TextButton(onClick = { isLogin = !isLogin }) {
-                Text(if (isLogin) "Criar uma Nova Conta" else "Já Tenho uma Conta")
-            }
-
-            if (isLogin) {
-                TextButton(onClick = { isPasswordReset = true }) {
-                    Text("Esqueci Minha Senha")
                 }
             }
-        }
 
-        // Mensagem de erro
-        if (authState is AuthState.Error) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = (authState as AuthState.Error).message,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
+            // Mensagem de erro
+            if (authState is AuthState.Error) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = (authState as AuthState.Error).message,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
 
-        // Indicador de progresso
-        if (authState is AuthState.Loading) {
-            Spacer(modifier = Modifier.height(16.dp))
-            CircularProgressIndicator()
+            // Indicador de progresso
+            if (authState is AuthState.Loading) {
+                Spacer(modifier = Modifier.height(16.dp))
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }
