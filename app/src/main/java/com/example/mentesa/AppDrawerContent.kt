@@ -1,67 +1,334 @@
 package com.example.mentesa
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.mentesa.ui.theme.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Usando a constante NEW_CONVERSATION_ID definida no ChatViewModel
+
 @Composable
 fun AppDrawerContent(
     conversationDisplayItems: List<ConversationDisplayItem>,
     currentConversationId: Long?,
     onConversationClick: (Long) -> Unit,
     onNewChatClick: () -> Unit,
-    onDeleteConversationRequest: (conversationId: Long) -> Unit,
-    onRenameConversationRequest: (conversationId: Long) -> Unit,
-    modifier: Modifier = Modifier
+    onDeleteConversationRequest: (Long) -> Unit,
+    onRenameConversationRequest: (Long) -> Unit
 ) {
-    ModalDrawerSheet(modifier = modifier) {
-        Text(
-            text = stringResource(R.string.conversation_list_title),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(16.dp)
-        )
-        HorizontalDivider()
-        Spacer(modifier = Modifier.height(16.dp))
+    Surface(
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(280.dp),
+        color = Color.White
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(vertical = 16.dp)
+        ) {
+            // Cabeçalho do drawer
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Ícone do app
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(PrimaryColor.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.baseline_account_circle_24),
+                            contentDescription = null,
+                            tint = PrimaryColor,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
 
-        NavigationDrawerItem(
-            icon = { Icon(Icons.Default.Add, contentDescription = null) },
-            label = { Text(stringResource(R.string.new_conversation_title)) },
-            selected = currentConversationId == null || currentConversationId == NEW_CONVERSATION_ID,
-            onClick = onNewChatClick,
-            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
-        if (conversationDisplayItems.isEmpty()) {
-            Text(
-                text = stringResource(R.string.no_conversations_placeholder),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(16.dp)
-            )
-        } else {
-            LazyColumn {
-                items(conversationDisplayItems, key = { it.id }) { displayItem ->
-                    ConversationDrawerRow(
-                        displayItem = displayItem,
-                        isSelected = displayItem.id == currentConversationId,
-                        onItemClick = { onConversationClick(displayItem.id) },
-                        onRenameClick = { onRenameConversationRequest(displayItem.id) },
-                        onDeleteClick = { onDeleteConversationRequest(displayItem.id) }
+                    // Título do app com maior contraste
+                    Text(
+                        text = stringResource(id = R.string.app_name),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = PrimaryColor,
+                        fontWeight = FontWeight.Bold
                     )
-                    HorizontalDivider()
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Divisor horizontal
+            Divider(
+                modifier = Modifier.fillMaxWidth(),
+                thickness = 1.dp,
+                color = Color.LightGray.copy(alpha = 0.5f)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Botão "Nova Conversa"
+            NewChatButton(
+                onClick = onNewChatClick,
+                isSelected = currentConversationId == null || currentConversationId == NEW_CONVERSATION_ID
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Lista de conversas
+            if (conversationDisplayItems.isNotEmpty()) {
+                // Título da seção com maior contraste
+                Text(
+                    text = "Suas conversas",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = Color.DarkGray,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    items(conversationDisplayItems) { item ->
+                        ConversationItem(
+                            item = item,
+                            isSelected = currentConversationId == item.id,
+                            onClick = { onConversationClick(item.id) },
+                            onRenameClick = { onRenameConversationRequest(item.id) },
+                            onDeleteClick = { onDeleteConversationRequest(item.id) }
+                        )
+                    }
+                }
+            } else {
+                // Mensagem quando não há conversas - com maior contraste
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Nenhuma conversa salva",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = Color.DarkGray,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Suas conversas aparecerão aqui",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.DarkGray.copy(alpha = 0.8f),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+                }
+            }
+
+            // Rodapé com versão do app - com maior contraste
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Versão 1.0",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = Color.DarkGray
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun NewChatButton(
+    onClick: () -> Unit,
+    isSelected: Boolean
+) {
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isSelected) PrimaryColor.copy(alpha = 0.15f) else Color.Transparent,
+        animationSpec = tween(durationMillis = 200),
+        label = "backgroundColor"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundColor
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Ícone de adição em um círculo
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(PrimaryColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Nova conversa",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Texto "Nova conversa" com maior contraste
+            Text(
+                text = "Nova conversa",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isSelected) PrimaryColor else Color.DarkGray
+            )
+        }
+    }
+}
+
+@Composable
+fun ConversationItem(
+    item: ConversationDisplayItem,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onRenameClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isSelected) PrimaryColor.copy(alpha = 0.15f) else Color.Transparent,
+        animationSpec = tween(durationMillis = 200),
+        label = "backgroundColor"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundColor
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Círculo com a primeira letra do título como ícone
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(SecondaryColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = item.displayTitle.firstOrNull()?.uppercase() ?: "C",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Título da conversa com maior contraste
+            Text(
+                text = item.displayTitle,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (isSelected) PrimaryColor else Color.Black, // Mudado para preto
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+
+            // Botões de ação (apenas visíveis quando selecionado ou em hover)
+            Row {
+                IconButton(
+                    onClick = { onRenameClick() },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Renomear",
+                        tint = Color.DarkGray, // Mudado para DarkGray para maior contraste
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                IconButton(
+                    onClick = { onDeleteClick() },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Excluir",
+                        tint = Color.DarkGray, // Mudado para DarkGray para maior contraste
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
         }
@@ -69,84 +336,87 @@ fun AppDrawerContent(
 }
 
 @Composable
-private fun ConversationDrawerRow(
-    displayItem: ConversationDisplayItem,
-    isSelected: Boolean,
-    onItemClick: () -> Unit,
-    onRenameClick: () -> Unit,
-    onDeleteClick: () -> Unit
+fun RenameConversationDialog(
+    conversationId: Long,
+    currentTitle: String?,
+    onConfirm: (Long, String) -> Unit,
+    onDismiss: () -> Unit
 ) {
-    var showMenu by remember { mutableStateOf(false) }
-    val backgroundColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-    } else {
-        Color.Transparent
-    }
+    var newTitle by remember { mutableStateOf(currentTitle ?: "") }
 
-    // Determina o ícone da conversa com base no seu tipo
-    val conversationType = displayItem.conversationType ?: ConversationType.GENERAL
-    val (conversationIcon, iconTint) = when (conversationType) {
-        ConversationType.PERSONAL -> Icons.Default.Person to MaterialTheme.colorScheme.secondary
-        ConversationType.EMOTIONAL -> Icons.Default.Favorite to Color(0xFFE57373) // Vermelho claro
-        ConversationType.THERAPEUTIC -> Icons.Default.Psychology to Color(0xFF64B5F6) // Azul claro
-        ConversationType.HIGHLIGHTED -> Icons.Default.Star to Color(0xFFFFD54F) // Amarelo âmbar
-        ConversationType.GENERAL -> Icons.Default.Chat to MaterialTheme.colorScheme.primary
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onItemClick)
-            .background(backgroundColor)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = conversationIcon,
-            contentDescription = null,
-            modifier = Modifier.size(24.dp),
-            tint = iconTint
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = displayItem.displayTitle,
-            style = MaterialTheme.typography.bodyLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Box {
-            IconButton(onClick = { showMenu = true }) {
-                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.conversation_options_desc))
-            }
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.rename_action)) },
-                    onClick = {
-                        onRenameClick()
-                        showMenu = false
-                    },
-                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.delete_action)) },
-                    onClick = {
-                        onDeleteClick()
-                        showMenu = false
-                    },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Renomear conversa",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = newTitle,
+                    onValueChange = { newTitle = it },
+                    label = {
+                        Text(
+                            "Novo nome",
+                            fontWeight = FontWeight.Medium,
+                            color = Color.DarkGray
                         )
-                    }
+                    },
+                    textStyle = TextStyle(
+                        fontWeight = FontWeight.Medium,
+                        color = Color.Black
+                    ),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedBorderColor = PrimaryColor,
+                        unfocusedBorderColor = Color.Gray.copy(alpha = 0.5f),
+                        focusedLabelColor = PrimaryColor,
+                        cursorColor = PrimaryColor
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
                 )
             }
-        }
-    }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (newTitle.isNotBlank()) {
+                        onConfirm(conversationId, newTitle)
+                    }
+                },
+                enabled = newTitle.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PrimaryColor
+                ),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    "Salvar",
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss
+            ) {
+                Text(
+                    "Cancelar",
+                    color = Color.DarkGray,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        },
+        shape = RoundedCornerShape(16.dp),
+        containerColor = Color.White,
+        tonalElevation = 8.dp
+    )
 }

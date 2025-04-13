@@ -1,234 +1,413 @@
-// AuthScreen.kt
 package com.example.mentesa
 
 import android.app.Activity
-import android.content.Context
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.google.android.gms.auth.api.identity.BeginSignInRequest
-import com.google.android.gms.auth.api.identity.Identity
+import com.example.mentesa.ui.theme.*
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
-import androidx.compose.ui.text.input.VisualTransformation
 
 @Composable
 fun AuthScreen(
     onNavigateToChat: () -> Unit,
-    onBackToChat: () -> Unit = {},
+    onBackToChat: () -> Unit,
     authViewModel: AuthViewModel = viewModel()
 ) {
-    val authState by authViewModel.authState.collectAsState()
-    val currentUser by authViewModel.currentUser.collectAsState()
-    val context = LocalContext.current
-    val oneTapClient = remember { Identity.getSignInClient(context) }
-
-    var googleSignInError by remember { mutableStateOf<String?>(null) }
-    var isLogin by remember { mutableStateOf(true) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var showPassword by remember { mutableStateOf(false) }
-    var isPasswordReset by remember { mutableStateOf(false) }
+    var isLogin by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val isLoading = authState is AuthState.Loading
+    val authState by authViewModel.authState.collectAsState()
+    val context = LocalContext.current
 
+    // Configurar cliente de login do Google
+    val googleSignInClient = remember {
+        GoogleSignIn.getClient(
+            context,
+            GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(context.getString(R.string.default_web_client_id))
+                .requestEmail()
+                .build()
+        )
+    }
+
+    // Configurar launcher para login do Google
     val googleSignInLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartIntentSenderForResult()
+        contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        googleSignInError = null
-        Log.d("AuthScreen", "[GoogleSignIn] Activity Result: Code = ${result.resultCode}")
-
         if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
-                val credential = oneTapClient.getSignInCredentialFromIntent(result.data)
-                val idToken = credential.googleIdToken
-                if (idToken != null) {
+                val account = task.getResult(ApiException::class.java)
+                account?.idToken?.let { idToken ->
+                    // Chama método para autenticar com Firebase usando o token
                     authViewModel.signInWithGoogle(idToken)
-                } else {
-                    googleSignInError = "Não foi possível obter o token do Google"
                 }
             } catch (e: ApiException) {
-                googleSignInError = "Erro na autenticação Google: ${e.localizedMessage}"
-            } catch (e: Exception) {
-                googleSignInError = "Erro inesperado: ${e.message}"
-            }
-        } else if (result.resultCode == Activity.RESULT_CANCELED) {
-            googleSignInError = "Login com Google cancelado"
-        } else {
-            googleSignInError = "Falha no login com Google"
-        }
-    }
-
-    fun startGoogleSignIn() {
-        if (!isLoading) {
-            try {
-                googleSignInError = null
-                val signInRequest = BeginSignInRequest.builder()
-                    .setGoogleIdTokenRequestOptions(
-                        BeginSignInRequest.GoogleIdTokenRequestOptions.builder()
-                            .setSupported(true)
-                            .setServerClientId(context.getString(R.string.default_web_client_id))
-                            .setFilterByAuthorizedAccounts(false)
-                            .build()
-                    )
-                    .setAutoSelectEnabled(true)
-                    .build()
-
-                oneTapClient.beginSignIn(signInRequest)
-                    .addOnSuccessListener { result ->
-                        val intentSenderRequest = IntentSenderRequest.Builder(result.pendingIntent.intentSender).build()
-                        googleSignInLauncher.launch(intentSenderRequest)
-                    }
-                    .addOnFailureListener {
-                        googleSignInError = "Não foi possível iniciar o login com Google"
-                    }
-            } catch (e: Exception) {
-                googleSignInError = "Erro: ${e.message}"
+                // Manipula erro
+                Log.e("GoogleSignIn", "Google sign in failed", e)
+                errorMessage = "Falha na autenticação com Google: ${e.localizedMessage}"
             }
         }
     }
 
-    LaunchedEffect(isLogin, isPasswordReset) {
-        email = ""
-        password = ""
-        googleSignInError = null
-    }
-
-    LaunchedEffect(authState, currentUser) {
-        if (authState is AuthState.Success && currentUser != null) {
-            onNavigateToChat()
+    LaunchedEffect(authState) {
+        when (authState) {
+            is AuthState.Success -> onNavigateToChat()
+            is AuthState.Error -> errorMessage = (authState as AuthState.Error).message
+            else -> { /* Outros estados não precisam de ação especial aqui */ }
         }
     }
 
-    Surface(modifier = Modifier.fillMaxSize()) {
-        Column(
+    // Container principal com fundo suave
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BackgroundColor),
+        contentAlignment = Alignment.Center
+    ) {
+        // Card principal para o formulário de login/cadastro
+        Card(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.headlineLarge,
-                modifier = Modifier.padding(bottom = 32.dp)
+                .fillMaxWidth(0.9f)
+                .padding(16.dp)
+                .shadow(
+                    elevation = 4.dp,
+                    spotColor = Color.Black.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(32.dp)
+                ),
+            shape = RoundedCornerShape(32.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
             )
-
-            if (isPasswordReset) {
-                Text("Recuperação de Senha", style = MaterialTheme.typography.titleLarge)
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    placeholder = { Text("Email") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    enabled = !isLoading
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { authViewModel.resetPassword(email) },
-                    enabled = email.isNotEmpty() && !isLoading,
-                    modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Logo do app em destaque
+                Box(
+                    modifier = Modifier
+                        .size(100.dp)
+                        .clip(CircleShape)
+                        .background(PrimaryColor.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text("Enviar Email de Recuperação")
+                    Image(
+                        painter = painterResource(id = R.drawable.baseline_account_circle_24),
+                        contentDescription = "Mente Sã Logo",
+                        modifier = Modifier.size(80.dp),
+                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(PrimaryColor)
+                    )
                 }
+
                 Spacer(modifier = Modifier.height(8.dp))
-                TextButton(
-                    onClick = { isPasswordReset = false },
-                    enabled = !isLoading
-                ) { Text("Voltar ao Login") }
-            } else {
-                Text(if (isLogin) "Login" else "Criar Conta", style = MaterialTheme.typography.titleLarge)
-                Spacer(modifier = Modifier.height(24.dp)) // Espaço entre o título e os inputs
+
+                // Título animado
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn(animationSpec = tween(durationMillis = 500))
+                ) {
+                    Text(
+                        text = if (isLogin) "Bem-vindo(a) de volta" else "Criar uma conta",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        color = TextColorDark,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+
+                // Subtítulo com maior contraste
+                Text(
+                    text = if (isLogin) "Entre para continuar" else "Preencha os dados para se cadastrar",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium, // Aumentado para Medium
+                    textAlign = TextAlign.Center,
+                    color = TextColorDark.copy(alpha = 0.9f), // Maior opacidade para melhor contraste
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                // Campo de email com estilo personalizado
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    placeholder = { Text("Email") },
-                    modifier = Modifier.fillMaxWidth(),
+                    label = {
+                        Text(
+                            "Email",
+                            fontWeight = FontWeight.Medium,
+                            color = Color.DarkGray
+                        )
+                    },
+                    textStyle = TextStyle(
+                        fontWeight = FontWeight.Medium,
+                        color = Color.Black
+                    ),
                     singleLine = true,
-                    enabled = !isLoading
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedBorderColor = PrimaryColor,
+                        unfocusedBorderColor = Color.Gray.copy(alpha = 0.5f),
+                        focusedLabelColor = PrimaryColor,
+                        cursorColor = PrimaryColor
+                    ),
+                    keyboardOptions = KeyboardOptions.Default.copy(
+                        imeAction = ImeAction.Next
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+
+                // Campo de senha com estilo personalizado
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    placeholder = { Text("Senha") },
-                    modifier = Modifier.fillMaxWidth(),
-                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    label = {
+                        Text(
+                            "Senha",
+                            fontWeight = FontWeight.Medium,
+                            color = Color.DarkGray
+                        )
+                    },
+                    textStyle = TextStyle(
+                        fontWeight = FontWeight.Medium,
+                        color = Color.Black
+                    ),
                     singleLine = true,
-                    enabled = !isLoading
+                    visualTransformation = PasswordVisualTransformation(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedBorderColor = PrimaryColor,
+                        unfocusedBorderColor = Color.Gray.copy(alpha = 0.5f),
+                        focusedLabelColor = PrimaryColor,
+                        cursorColor = PrimaryColor
+                    ),
+                    keyboardOptions = KeyboardOptions.Default.copy(
+                        imeAction = ImeAction.Done
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
                 )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = { showPassword = !showPassword }) {
-                        Text(if (showPassword) "Esconder" else "Mostrar")
+
+                // Mensagem de erro com animação
+                AnimatedVisibility(
+                    visible = errorMessage != null,
+                    enter = fadeIn(animationSpec = tween(durationMillis = 300)),
+                    exit = fadeOut(animationSpec = tween(durationMillis = 300))
+                ) {
+                    errorMessage?.let {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .padding(8.dp)
+                        )
                     }
                 }
-                Spacer(modifier = Modifier.height(32.dp))
+
+                // Botão principal com formato mais arredondado
                 Button(
                     onClick = {
-                        if (isLogin) authViewModel.loginWithEmail(email, password)
-                        else authViewModel.registerWithEmail(email, password)
-                    },
-                    enabled = email.isNotEmpty() && password.isNotEmpty() && !isLoading,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (isLogin) "Entrar" else "Registrar")
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("OU")
-                Spacer(modifier = Modifier.height(16.dp))
-                OutlinedButton(
-                    onClick = { startGoogleSignIn() },
-                    enabled = !isLoading,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_google_logo),
-                        contentDescription = "Google Logo",
-                        modifier = Modifier.size(20.dp),
-                        tint = Color.Unspecified
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.sign_in_with_google))
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TextButton(onClick = { isLogin = !isLogin }) {
-                        Text(if (isLogin) "Criar Conta" else "Já Tenho Conta")
-                    }
-                    if (isLogin) {
-                        TextButton(onClick = { isPasswordReset = true }) {
-                            Text("Esqueci Senha")
+                        errorMessage = null
+                        if (email.isBlank() || password.isBlank()) {
+                            errorMessage = "Por favor, preencha todos os campos"
+                            return@Button
                         }
+
+                        if (isLogin) {
+                            authViewModel.loginWithEmail(email, password)
+                        } else {
+                            authViewModel.registerWithEmail(email, password)
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PrimaryColor,
+                        contentColor = Color.White
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 2.dp,
+                        pressedElevation = 0.dp
+                    )
+                ) {
+                    Text(
+                        if (isLogin) "Entrar" else "Cadastrar",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                // Separador
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Usando Divider com background para evitar problemas de API
+                    Divider(
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(Color.Gray.copy(alpha = 0.3f))
+                    )
+                    Text(
+                        text = "  ou  ",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = TextColorDark.copy(alpha = 0.7f)
+                    )
+                    Divider(
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(Color.Gray.copy(alpha = 0.3f))
+                    )
+                }
+
+                // Botão de login com Google estilizado
+                OutlinedButton(
+                    onClick = {
+                        googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = Color.Gray.copy(alpha = 0.3f)
+                    ),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = TextColorDark
+                    )
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        // Definindo um modifier de largura aqui para o conteúdo do botão
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // Ícone do Google SVG inline
+                        Icon(
+                            imageVector = googleIcon(),
+                            contentDescription = "Logo do Google",
+                            modifier = Modifier.size(24.dp),
+                            tint = Color.Unspecified // Mantém as cores originais
+                        )
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        // Texto com largura máxima definida para evitar quebra
+                        Text(
+                            text = "Login com Google",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            // Evita a quebra de linha do texto
+                            maxLines = 1,
+                            overflow = TextOverflow.Visible
+                        )
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
-            TextButton(onClick = { onBackToChat() }) {
-                Text("Voltar ao Chat")
-            }
-
-            val errorMessage = googleSignInError ?: (authState as? AuthState.Error)?.message
-            if (errorMessage != null && !isLoading) {
-                Text(
-                    text = errorMessage,
-                    color = MaterialTheme.colorScheme.error,
+                // Alternância entre login e cadastro com contraste aumentado
+                TextButton(
+                    onClick = { isLogin = !isLogin },
                     modifier = Modifier.padding(top = 8.dp)
-                )
+                ) {
+                    Text(
+                        if (isLogin) "Não tem uma conta? Cadastre-se" else "Já tem uma conta? Faça login",
+                        color = PrimaryColor,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp
+                    )
+                }
+
+                // Carregamento com animação
+                if (authState is AuthState.Loading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(top = 16.dp),
+                        color = PrimaryColor,
+                        strokeWidth = 3.dp
+                    )
+                }
             }
         }
+
+        // Decoração visual com bolhas no fundo
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .clip(CircleShape)
+                .background(SecondaryColor.copy(alpha = 0.1f))
+                .align(Alignment.TopEnd)
+                .offset(x = 40.dp, y = (-20).dp)
+        )
+
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .clip(CircleShape)
+                .background(PrimaryColor.copy(alpha = 0.1f))
+                .align(Alignment.BottomStart)
+                .offset(x = (-20).dp, y = 30.dp)
+        )
     }
 }
+
+// Função que retorna o ícone do Google como ImageVector
+@Composable
+fun googleIcon() = ImageVector.vectorResource(id = R.drawable.ic_google_logo)

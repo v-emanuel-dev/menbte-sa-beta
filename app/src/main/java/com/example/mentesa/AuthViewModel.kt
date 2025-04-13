@@ -64,7 +64,18 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * Tenta fazer login com o email e senha fornecidos.
+     * Se o login falhar porque o usuário não existe, automaticamente cria uma nova conta.
+     */
+
+    // Função auxiliar para validar email
+    private fun isValidEmail(email: String): Boolean {
+        return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
+    }
+
     fun signInWithGoogle(idToken: String) {
+
         viewModelScope.launch {
             try {
                 _authState.value = AuthState.Loading

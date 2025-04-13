@@ -181,9 +181,18 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     - **Encorajador:** Incentivo a pequenos passos e autocuidado.
 
     ## Limites e Restrições
-    1. **NÃO FAÇA DIAGNÓSTICOS:** Apenas um profissional pode diagnosticar.
-    2. **NÃO SUBSTITUA TERAPIA:** Você é um apoio, não um substituto para acompanhamento terapêutico.
-    3. **FOCO NO BEM-ESTAR:** Redirecione temas fora do escopo.
+    3.  **FOCO NO BEM-ESTAR, MAS COM FLEXIBILIDADE:** Priorize conversas sobre saúde mental, emoções, relacionamentos, desafios pessoais e bem-estar. Permita que o usuário fale sobre seu dia, trabalho (ex: programação, vendas, etc.), estudos, família, hobbies, especialmente explorando como esses aspectos *afetam* seu estado emocional, seu estresse ou sua visão de mundo. **EVITE a recusa explícita e taxativa do prompt antigo.** No entanto, se o assunto se desviar *completamente* do foco em você, seus sentimentos, desafios e bem-estar, redirecione gentilmente. **Exemplos de desvio completo incluem:**
+        * Pedir explicações detalhadas sobre teorias científicas (física quântica, reações químicas, biologia celular) ou soluções para problemas matemáticos complexos.
+        * Solicitar que você escreva histórias de ficção, poemas, letras de música ou roteiros.
+        * Perguntar sobre notícias específicas, resultados de esportes ou eventos políticos de forma puramente informativa e impessoal, sem qualquer conexão com o impacto emocional que isso causa no usuário.
+        * Pedir ajuda técnica detalhada com aparelhos eletrônicos, instalação de software ou para depurar/escrever código de programação (a menos que a *dificuldade* ou o *estresse* causado por essas tarefas seja o foco da conversa sobre bem-estar).
+        * Tentar iniciar um debate sobre filosofia abstrata, religião comparada ou política partidária de forma genérica.
+        * Pedir receitas culinárias detalhadas, guias de viagem, ou instruções passo a passo para tarefas práticas não relacionadas diretamente a técnicas de autocuidado ou enfrentamento (ex: como consertar algo, como jogar um jogo).
+        * Engajar em conversa fiada prolongada e superficial sobre trivialidades (previsão do tempo detalhada para outra cidade, fofoca sobre celebridades desconhecidas) sem qualquer vínculo com o estado de espírito ou experiência pessoal do usuário.
+        * Fazer perguntas sobre suas próprias capacidades técnicas como IA de forma abstrata ("Qual seu algoritmo?", "Como você foi treinado?").
+
+    Nestes casos de desvio completo, use frases de redirecionamento gentis como: "Esse é um tópico interessante, mas foge um pouco da minha área de foco principal aqui, que é te oferecer um espaço para explorar suas questões emocionais e de bem-estar. Para aproveitarmos melhor nosso tempo juntos, gostaria de voltar a falar sobre como você está se sentindo ou sobre algo que esteja em sua mente?" ou "Entendo seu interesse nisso. No entanto, estou aqui principalmente para te apoiar com seus pensamentos e sentimentos. Como essa questão [externa] está impactando você ou o que você está vivenciando?".
+    
     4. **EVITE CONSELHOS DIRETOS:** Oriente sem dar ordens diretas.
     5. **SITUAÇÕES DE CRISE:** Direcione para recursos imediatos (ex.: CVV).
 
@@ -324,14 +333,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val userUiMessage = ChatMessage(userMessageText, Sender.USER)
         saveMessageToDb(userUiMessage, targetConversationId, timestamp)
 
-        if (this.isProhibitedTopic(userMessageText)) {
-            Log.w("ChatViewModel", "Prohibited topic detected: '${userMessageText.take(50)}...'")
-            val botResponse = "Desculpe, sou especializado apenas em temas de saúde mental. Posso ajudar você com ansiedade, depressão, técnicas de autocuidado ou outros assuntos relacionados ao bem-estar emocional."
-            saveMessageToDb(ChatMessage(botResponse, Sender.BOT), targetConversationId)
-            _loadingState.value = LoadingState.IDLE
-            return
-        }
-
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val currentMessagesFromDb = chatDao.getMessagesForConversation(targetConversationId, _userIdFlow.value).first()
@@ -412,51 +413,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun isProhibitedTopic(message: String): Boolean {
-        val prohibitedTopics = mapOf(
-            "Ciências Exatas" to listOf("física", "química", "matemática", "equação", "fórmula", "cálculo", "átomo", "molécula", "reação", "elemento", "tabela periódica", "teorema", "álgebra", "geometria", "trigonometria", "derivada", "integral", "newton", "einstein", "celsius", "kelvin", "tesla", "feynman"),
-            "Astronomia" to listOf("astronomia", "planeta", "galáxia", "sistema solar", "estrela", "universo", "nasa", "spacex", "satélite", "marte", "júpiter", "lua", "eclipse", "cometa"),
-            "História/Geografia" to listOf("história", "geografia", "guerra", "império", "revolução", "dinastia", "continente", "país", "capital", "mapa", "relevo", "clima", "população", "guerra mundial", "idade média", "renascimento", "colonização", "civilização"),
-            "Política/Economia" to listOf("política", "economia", "presidente", "eleição", "partido", "congresso", "senador", "deputado", "ministro", "inflação", "juros", "bolsa", "mercado", "imposto", "orçamento", "déficit", "superávit", "banco central", "governo"),
-            "Entretenimento" to listOf("esporte", "futebol", "basquete", "vôlei", "filme", "novela", "série", "time", "campeonato", "copa", "olimpíada", "ator", "atriz", "diretor", "netflix", "cinema", "teatro", "show", "música", "concerto", "festival"),
-            "Tecnologia" to listOf("computador", "programação", "código", "app", "desenvolvimento", "software", "hardware", "internet", "rede", "algoritmo", "linguagem", "java", "python", "website", "servidor", "banco de dados", "cloud", "api", "framework"),
-            "Linguística" to listOf("língua", "gramática", "sintaxe", "semântica", "verbo", "substantivo", "pronome", "preposição", "ortografia", "fonética", "tradução", "idioma")
-        )
-        val lowercaseMessage = message.lowercase()
-        return prohibitedTopics.values.flatten().any { keyword ->
-            val pattern = "\\b$keyword\\b|\\b$keyword-|\\b$keyword\\s"
-            pattern.toRegex().containsMatchIn(lowercaseMessage)
-        }
-    }
-
-    private fun isValidResponse(response: String): Boolean {
-        val prohibitedPhrases = listOf(
-            "na física", "em física", "a física", "física é", "física clássica", "física quântica", "leis da física", "conceito físico", "fenômeno físico", "teoria física",
-            "em matemática", "na matemática", "fórmula", "equação", "cálculo de", "teorema", "matemática é", "matematicamente", "valor numérico", "resolva",
-            "na história", "história do", "período histórico", "guerra mundial", "revolução", "império", "dinastia", "século", "era", "idade média",
-            "presidente", "governador", "político", "eleição", "partido", "congresso", "senado", "câmara", "ministro", "governo",
-            "astronomia", "planeta", "sistema solar", "galáxia", "estrela", "constelação", "universo", "nasa", "telescópio", "órbita",
-            "computação", "programação", "código fonte", "algoritmo", "linguagem de programação", "software", "hardware", "aplicativo", "desenvolvimento web", "sistema operacional",
-            "esporte", "time", "jogador", "campeonato", "liga", "filme", "série", "ator", "diretor", "cinema", "televisão", "streaming", "episódio"
-        )
-        val allowedContexts = listOf(
-            "no contexto da saúde mental", "relacionado à saúde mental", "impacto na saúde mental", "afeta a saúde mental", "bem-estar emocional", "bem-estar psicológico", "técnica terapêutica", "abordagem terapêutica"
-        )
-        val lowercaseResponse = response.lowercase()
-        return !prohibitedPhrases.any { phrase ->
-            if (lowercaseResponse.contains(phrase)) {
-                !allowedContexts.any { context ->
-                    val startIndex = maxOf(0, lowercaseResponse.indexOf(phrase) - 50)
-                    val endIndex = minOf(lowercaseResponse.length, lowercaseResponse.indexOf(phrase) + phrase.length + 50)
-                    val surroundingText = lowercaseResponse.substring(startIndex, endIndex)
-                    surroundingText.contains(context)
-                }
-            } else {
-                false
-            }
-        }
-    }
-
     private suspend fun callGeminiApi(userMessageText: String, historyForApi: List<Content>, conversationId: Long) {
         var finalBotResponseText: String? = null
         try {
@@ -476,10 +432,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     if (cause == null) {
                         Log.i("ChatViewModel", "Stream completed successfully for conv $conversationId.")
                         finalBotResponseText = currentBotText
-                        if (!finalBotResponseText.isNullOrBlank() && !isValidResponse(finalBotResponseText!!)) {
-                            Log.w("ChatViewModel", "Invalid response detected for conv $conversationId, replacing with fallback")
-                            finalBotResponseText = "Desculpe, não posso fornecer essa informação pois está fora do escopo de saúde mental. Como posso ajudar com seu bem-estar emocional hoje?"
-                        }
                     } else {
                         Log.e("ChatViewModel", "Stream completed with error for conv $conversationId", cause)
                         withContext(Dispatchers.Main) {

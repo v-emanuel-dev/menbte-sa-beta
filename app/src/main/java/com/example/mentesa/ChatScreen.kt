@@ -1,10 +1,8 @@
 package com.example.mentesa
 
 import android.util.Log
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,24 +22,22 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.mentesa.ui.theme.MenteSaTheme
+import com.example.mentesa.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import dev.jeziellago.compose.markdowntext.MarkdownText
-
-private val UserBubbleColor = Color(0xFF303030)
-private val BotBubbleColor = Color(0xFF000000)
-private val UserTextColor = Color.White
-private val BotTextColor = Color.White
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,7 +68,7 @@ fun ChatScreen(
     LaunchedEffect(logoutEvent) {
         if (logoutEvent) {
             userMessage = ""
-            chatViewModel.handleLogout() // Usar o método que também limpa o menu lateral
+            chatViewModel.handleLogout()
             Log.d("ChatScreen", "Tela e menu lateral limpos após logout")
         }
     }
@@ -125,14 +121,35 @@ fun ChatScreen(
             Scaffold(
                 topBar = {
                     CenterAlignedTopAppBar(
-                        title = { Text(stringResource(id = R.string.app_name)) },
+                        title = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.baseline_account_circle_24),
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = stringResource(id = R.string.app_name),
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        },
                         navigationIcon = {
                             IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
-                                Icon(Icons.Filled.Menu, stringResource(R.string.open_drawer_description), tint = Color.White)
+                                Icon(
+                                    Icons.Filled.Menu,
+                                    stringResource(R.string.open_drawer_description),
+                                    tint = Color.White
+                                )
                             }
                         },
                         actions = {
-                            // Login/logout button
+                            // Login/logout button with animations
                             IconButton(
                                 onClick = {
                                     if (currentUser != null) {
@@ -140,7 +157,11 @@ fun ChatScreen(
                                     } else {
                                         onLogin()
                                     }
-                                }
+                                },
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))
                             ) {
                                 Icon(
                                     imageVector = if (currentUser != null) Icons.Default.Logout else Icons.Default.Login,
@@ -150,7 +171,10 @@ fun ChatScreen(
                             }
                         },
                         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                            containerColor = Color.Black, titleContentColor = Color.White
+                            containerColor = PrimaryColor,
+                            titleContentColor = Color.White,
+                            navigationIconContentColor = Color.White,
+                            actionIconContentColor = Color.White
                         )
                     )
                 },
@@ -166,42 +190,69 @@ fun ChatScreen(
                         },
                         isSendEnabled = !isLoading
                     )
-                }
+                },
+                containerColor = MaterialTheme.colorScheme.background
             ) { paddingValues ->
                 Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.weight(1f).padding(horizontal = 16.dp),
-                        contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp)
+                    // Background padrão mais claro e arejado
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .background(BackgroundColor)
                     ) {
-                        items(messages, key = { "${it.sender}-${it.text.hashCode()}" }) { message ->
-                            MessageBubble(message = message)
-                        }
-                        if (isLoading) {
-                            item { TypingBubbleAnimation(modifier = Modifier.padding(vertical = 4.dp)) }
+                        // Conteúdo da conversa
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp) // Espaçamento uniforme entre mensagens
+                        ) {
+                            items(messages, key = { "${it.sender}-${it.text.hashCode()}" }) { message ->
+                                MessageBubble(message = message)
+                            }
+                            if (isLoading) {
+                                item { TypingBubbleAnimation(modifier = Modifier.padding(vertical = 4.dp)) }
+                            }
                         }
                     }
+
+                    // Área de erro, caso exista
                     errorMessage?.let { errorMsg ->
                         Text(
                             text = "Erro: $errorMsg",
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
                                 .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f))
-                                .padding(vertical = 4.dp)
+                                .padding(vertical = 4.dp, horizontal = 12.dp)
                         )
                     }
                 }
             }
         }
 
+        // Diálogo de confirmação de exclusão
         showDeleteConfirmationDialog?.let { conversationIdToDelete ->
             AlertDialog(
                 onDismissRequest = { showDeleteConfirmationDialog = null },
-                title = { Text(stringResource(R.string.delete_confirmation_title)) },
-                text = { Text(stringResource(R.string.delete_confirmation_text)) },
+                title = {
+                    Text(
+                        stringResource(R.string.delete_confirmation_title),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text(
+                        stringResource(R.string.delete_confirmation_text),
+                        fontWeight = FontWeight.Medium
+                    )
+                },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -209,17 +260,26 @@ fun ChatScreen(
                             showDeleteConfirmationDialog = null
                         }
                     ) {
-                        Text(stringResource(R.string.delete_confirm_button), color = MaterialTheme.colorScheme.error)
+                        Text(
+                            stringResource(R.string.delete_confirm_button),
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteConfirmationDialog = null }) {
-                        Text(stringResource(R.string.cancel_button))
+                        Text(
+                            stringResource(R.string.cancel_button),
+                            fontWeight = FontWeight.Medium
+                        )
                     }
-                }
+                },
+                shape = RoundedCornerShape(16.dp)
             )
         }
 
+        // Diálogo de renomeação de conversa
         conversationIdToRename?.let { id ->
             if (currentTitleForDialog != null) {
                 RenameConversationDialog(
@@ -237,12 +297,15 @@ fun ChatScreen(
         }
     }
 
+    // Auto-scroll para a última mensagem quando enviar
     LaunchedEffect(messages.size, isLoading) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
         }
     }
 }
+
+// Substitua a função MessageInput atual no seu ChatScreen.kt por esta versão corrigida:
 
 @Composable
 fun MessageInput(
@@ -251,48 +314,80 @@ fun MessageInput(
     onSendClick: () -> Unit,
     isSendEnabled: Boolean
 ) {
-    Surface(
-        shadowElevation = 8.dp,
-        modifier = Modifier.padding(bottom = 16.dp)
+    // Versão alternativa sem shadow e sem espaço escuro
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(BackgroundColor)  // Garante que o fundo seja da mesma cor do resto da tela
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+                .background(
+                    color = SurfaceColor,
+                    shape = RoundedCornerShape(28.dp)
+                )
+                .padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextField(
                 value = message,
                 onValueChange = onMessageChange,
-                placeholder = { Text(stringResource(R.string.message_input_placeholder)) },
-                modifier = Modifier.weight(1f),
+                placeholder = {
+                    Text(
+                        text = stringResource(R.string.message_input_placeholder),
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
+                },
+                textStyle = TextStyle(
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black
+                ),
+                modifier = Modifier
+                    .weight(1f),
                 shape = RoundedCornerShape(24.dp),
                 colors = TextFieldDefaults.colors(
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
                     disabledIndicatorColor = Color.Transparent,
                     errorIndicatorColor = Color.Transparent,
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                    focusedContainerColor = SurfaceColor,
+                    unfocusedContainerColor = SurfaceColor,
+                    cursorColor = PrimaryColor
                 ),
                 enabled = isSendEnabled,
                 maxLines = 5
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            IconButton(
-                onClick = onSendClick,
-                enabled = message.isNotBlank() && isSendEnabled,
-                modifier = Modifier.size(48.dp)
+
+            Spacer(modifier = Modifier.width(4.dp))
+
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (message.isNotBlank() && isSendEnabled)
+                            PrimaryColor
+                        else
+                            PrimaryColor.copy(alpha = 0.5f)
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = stringResource(R.string.action_send),
-                    tint = if (message.isNotBlank() && isSendEnabled)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
+                IconButton(
+                    onClick = onSendClick,
+                    enabled = message.isNotBlank() && isSendEnabled,
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        contentDescription = stringResource(R.string.action_send),
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }
@@ -301,15 +396,20 @@ fun MessageInput(
 @Composable
 fun MessageBubble(message: ChatMessage) {
     val isUserMessage = message.sender == Sender.USER
-    val userBubbleColor = UserBubbleColor
-    val userTextColor = UserTextColor
-    val botTextColor = BotTextColor
 
+    // Formas mais arredondadas para as bolhas
     val userShape = RoundedCornerShape(
-        topStart = 16.dp,
-        topEnd = 16.dp,
-        bottomStart = 16.dp,
-        bottomEnd = 0.dp
+        topStart = 20.dp,
+        topEnd = 20.dp,
+        bottomStart = 20.dp,
+        bottomEnd = 6.dp
+    )
+
+    val botShape = RoundedCornerShape(
+        topStart = 6.dp,
+        topEnd = 20.dp,
+        bottomStart = 20.dp,
+        bottomEnd = 20.dp
     )
 
     val visibleState = remember { MutableTransitionState(initialState = isUserMessage) }
@@ -323,21 +423,31 @@ fun MessageBubble(message: ChatMessage) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 2.dp),
         contentAlignment = if (isUserMessage) Alignment.CenterEnd else Alignment.CenterStart
     ) {
         if (isUserMessage) {
-            SelectionContainer {
-                Text(
-                    text = message.text,
-                    color = userTextColor,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier
-                        .widthIn(max = LocalConfiguration.current.screenWidthDp.dp * 0.75f)
-                        .clip(userShape)
-                        .background(userBubbleColor)
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
+            Card(
+                modifier = Modifier
+                    .widthIn(max = LocalConfiguration.current.screenWidthDp.dp * 0.75f),
+                shape = userShape,
+                colors = CardDefaults.cardColors(
+                    containerColor = UserBubbleColor,
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 2.dp // Adicionando uma leve elevação para maior contraste visual
                 )
+            ) {
+                SelectionContainer {
+                    Text(
+                        text = message.text,
+                        color = Color.Black, // Garantindo texto preto para máximo contraste
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.Medium // Texto um pouco mais forte
+                        ),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                    )
+                }
             }
         } else {
             AnimatedVisibility(
@@ -345,22 +455,32 @@ fun MessageBubble(message: ChatMessage) {
                 enter = fadeIn(animationSpec = tween(durationMillis = 300)) +
                         slideInHorizontally(
                             initialOffsetX = { -40 },
-                            animationSpec = tween(durationMillis = 400)
+                            animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing)
                         )
             ) {
-                Box(
+                Card(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
-                ) {
-                    MarkdownText(
-                        markdown = message.text,
-                        color = botTextColor,
-                        fontSize = MaterialTheme.typography.bodyLarge.fontSize,
-                        modifier = Modifier.fillMaxWidth(),
-                        linkColor = Color(0xFF90CAF9),
-                        onClick = { }
+                        .widthIn(max = LocalConfiguration.current.screenWidthDp.dp * 0.75f),
+                    shape = botShape,
+                    colors = CardDefaults.cardColors(
+                        containerColor = BotBubbleColor
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = 2.dp // Adicionando uma leve elevação para maior contraste visual
                     )
+                ) {
+                    // O componente MarkdownText não aceita fontWeight diretamente
+                    // Envolvendo em um Box para aplicar o padding
+                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                        MarkdownText(
+                            markdown = message.text,
+                            color = Color.White, // Garantindo texto branco para máximo contraste
+                            fontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                            // Removido: fontWeight = FontWeight.Medium,
+                            linkColor = Color(0xFFB8E2FF), // Cor de link mais clara para contraste
+                            onClick = { }
+                        )
+                    }
                 }
             }
         }
@@ -370,7 +490,7 @@ fun MessageBubble(message: ChatMessage) {
 @Composable
 fun TypingIndicatorAnimation(
     modifier: Modifier = Modifier,
-    dotColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+    dotColor: Color = Color.White,
     dotSize: Dp = 8.dp,
     spaceBetweenDots: Dp = 4.dp,
     bounceHeight: Dp = 6.dp
@@ -397,45 +517,51 @@ fun TypingIndicatorAnimation(
         }
     }
 
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
+    // Card para bolha de digitação com cantos arredondados e sombra suave
+    Card(
+        modifier = modifier
+            .wrapContentWidth()
+            .padding(8.dp),
+        shape = RoundedCornerShape(
+            topStart = 6.dp,
+            topEnd = 20.dp,
+            bottomStart = 20.dp,
+            bottomEnd = 20.dp
+        ),
+        colors = CardDefaults.cardColors(
+            containerColor = BotBubbleColor
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        )
     ) {
-        dots.forEachIndexed { index, animatable ->
-            if (index != 0) {
-                Spacer(modifier = Modifier.width(spaceBetweenDots))
+        Row(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            dots.forEachIndexed { index, animatable ->
+                if (index != 0) {
+                    Spacer(modifier = Modifier.width(spaceBetweenDots))
+                }
+                Box(
+                    modifier = Modifier
+                        .size(dotSize)
+                        .graphicsLayer { translationY = -animatable.value * 4 }
+                        .background(color = dotColor, shape = CircleShape)
+                )
             }
-            Box(
-                modifier = Modifier
-                    .size(dotSize)
-                    .graphicsLayer { translationY = animatable.value }
-                    .background(color = dotColor, shape = CircleShape)
-            )
         }
     }
 }
 
 @Composable
 fun TypingBubbleAnimation(modifier: Modifier = Modifier) {
-    val bubbleColor = MaterialTheme.colorScheme.secondaryContainer
-    val shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 0.dp, bottomEnd = 16.dp)
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         contentAlignment = Alignment.CenterStart
     ) {
-        Box(
-            modifier = modifier
-                .wrapContentWidth(Alignment.Start)
-                .defaultMinSize(minHeight = 40.dp)
-                .clip(shape)
-                .background(bubbleColor)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            TypingIndicatorAnimation()
-        }
+        TypingIndicatorAnimation(modifier = modifier)
     }
 }

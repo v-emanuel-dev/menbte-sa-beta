@@ -25,6 +25,7 @@ espressoCore = "3.5.1"
 kotlinxCoroutinesTest = "1.7.3"
 firebase-auth = "22.3.1"
 firebase-firestore = "24.10.1"
+uiTextGoogleFonts = "1.7.8"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -65,6 +66,7 @@ firebase-auth = { group = "com.google.firebase", name = "firebase-auth-ktx" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore-ktx" }
 play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
 play-services-auth-v2120 = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuthVersion" }
+androidx-ui-text-google-fonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts", version.ref = "uiTextGoogleFonts" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
