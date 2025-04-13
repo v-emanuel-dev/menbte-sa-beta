@@ -61,12 +61,6 @@ android {
         compose = true
         buildConfig = true
     }
-
-    packagingOptions {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-    }
 }
 
 dependencies {
@@ -86,15 +80,18 @@ dependencies {
     implementation(libs.material)
     implementation(libs.compose.markdown)
 
-    // Room database
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+
+    implementation(libs.play.services.auth.v2120)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

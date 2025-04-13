@@ -34,14 +34,15 @@ private const val MAX_HISTORY_MESSAGES = 20
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
+    // Firebase e banco de dados
+    private val auth = FirebaseAuth.getInstance()
     private val appDb = AppDatabase.getDatabase(application)
     private val chatDao: ChatDao = appDb.chatDao()
     private val metadataDao: ConversationMetadataDao = appDb.conversationMetadataDao()
-    private val auth = FirebaseAuth.getInstance()
 
-    // Current user ID from Firebase
-    private val currentUserId: String
-        get() = auth.currentUser?.uid ?: "local_user"
+    // Fluxos de estado internos
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
     private val _currentConversationId = MutableStateFlow<Long?>(null)
     val currentConversationId: StateFlow<Long?> = _currentConversationId.asStateFlow()
@@ -54,38 +55,71 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = false
         )
 
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+    // Novo: Fluxo para controle do evento de limpar a lista de conversas (por exemplo, após logout)
+    private val _clearConversationListEvent = MutableStateFlow(false)
+    val clearConversationListEvent: StateFlow<Boolean> = _clearConversationListEvent.asStateFlow()
 
-    private val rawConversationsFlow: Flow<List<ConversationInfo>> = chatDao.getConversationsForUser(currentUserId)
-        .catch { e ->
-            Log.e("ChatViewModel", "Error loading raw conversations flow", e)
-            _errorMessage.value = "Erro ao carregar lista de conversas (raw)."
-            emit(emptyList())
+    // Fluxo reativo do UID do usuário
+    private val _userIdFlow = MutableStateFlow(getCurrentUserId())
+
+    // Fluxo para controle de exibição das conversas
+    private val _showConversations = MutableStateFlow(true)
+    val showConversations: StateFlow<Boolean> = _showConversations.asStateFlow()
+
+    init {
+        auth.addAuthStateListener { firebaseAuth ->
+            _userIdFlow.value = getCurrentUserId()
+        }
+        loadInitialConversationOrStartNew()
+    }
+
+    // Função para obter o ID do usuário atual (ou "local_user" se não logado)
+    private fun getCurrentUserId(): String =
+        FirebaseAuth.getInstance().currentUser?.uid ?: "local_user"
+
+    // Fluxo de conversas filtrado pelo UID
+    private val rawConversationsFlow: Flow<List<ConversationInfo>> =
+        _userIdFlow.flatMapLatest { uid ->
+            chatDao.getConversationsForUser(uid)
+                .catch { e ->
+                    Log.e("ChatViewModel", "Error loading raw conversations flow", e)
+                    _errorMessage.value = "Erro ao carregar lista de conversas (raw)."
+                    emit(emptyList())
+                }
         }
 
-    private val metadataFlow: Flow<List<ConversationMetadataEntity>> = metadataDao.getMetadataForUser(currentUserId)
-        .catch { e ->
-            Log.e("ChatViewModel", "Error loading metadata flow", e)
-            emit(emptyList())
+    // Fluxo de metadata reativo
+    private val metadataFlow: Flow<List<ConversationMetadataEntity>> =
+        _userIdFlow.flatMapLatest { uid ->
+            metadataDao.getMetadataForUser(uid)
+                .catch { e ->
+                    Log.e("ChatViewModel", "Error loading metadata flow", e)
+                    emit(emptyList())
+                }
         }
 
+    // Combinação dos fluxos de conversas e metadata para exibição na UI
     val conversationListForDrawer: StateFlow<List<ConversationDisplayItem>> =
-        combine(rawConversationsFlow, metadataFlow) { conversations, metadataList ->
-            Log.d("ChatViewModel", "Combining ${conversations.size} convs and ${metadataList.size} metadata entries.")
-            val metadataMap = metadataList.associateBy({ it.conversationId }, { it.customTitle })
+        combine(rawConversationsFlow, metadataFlow, _showConversations, _userIdFlow) { conversations, metadataList, showConversations, currentUserId ->
+            if (!showConversations || auth.currentUser == null) {
+                return@combine emptyList<ConversationDisplayItem>()
+            }
 
+            Log.d("ChatViewModel", "Combining ${conversations.size} convs and ${metadataList.size} metadata entries for user $currentUserId.")
+
+            // Filtramos explicitamente metadados pelo ID do usuário (embora isso provavelmente já ocorra com getMetadataForUser)
+            val userMetadata = metadataList.filter { it.userId == currentUserId }
+            val metadataMap = userMetadata.associateBy({ it.conversationId }, { it.customTitle })
+
+            // Apenas conversas que estão no banco e tem o userId correto
             conversations.map { convInfo ->
                 val customTitle = metadataMap[convInfo.id]?.takeIf { it.isNotBlank() }
-                val finalTitle = customTitle ?: generateFallbackTitle(convInfo.id)
-
-                // Determinar o tipo de conversa com base no título ou no primeiro texto
+                val finalTitle = customTitle ?: generateFallbackTitleSync(convInfo.id)
                 val conversationType = determineConversationType(finalTitle, convInfo.id)
-
                 ConversationDisplayItem(
                     id = convInfo.id,
                     displayTitle = finalTitle,
-                    lastTimestamp = convInfo.lastTimestamp,  // Garantir que está usando lastTimestamp
+                    lastTimestamp = convInfo.lastTimestamp,
                     conversationType = conversationType
                 )
             }
@@ -98,20 +132,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 emit(emptyList())
             }
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.Eagerly,
-                initialValue = emptyList()
-            )
+            .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = emptyList())
 
-    val messages: StateFlow<List<ChatMessage>> = _currentConversationId.flatMapLatest { convId ->
-        Log.d("ChatViewModel", "[State] CurrentConversationId changed: $convId")
-        when (convId) {
-            null, NEW_CONVERSATION_ID -> {
-                flowOf(listOf(ChatMessage(welcomeMessageText, Sender.BOT)))
-            }
-            else ->
-                chatDao.getMessagesForConversation(convId)
+    // Fluxo de mensagens para a conversa atual
+    val messages: StateFlow<List<ChatMessage>> =
+        _currentConversationId.flatMapLatest { convId ->
+            Log.d("ChatViewModel", "[State] CurrentConversationId changed: $convId")
+            when (convId) {
+                null, NEW_CONVERSATION_ID -> {
+                    flowOf(listOf(ChatMessage(welcomeMessageText, Sender.BOT)))
+                }
+                else -> chatDao.getMessagesForConversation(convId, _userIdFlow.value)
                     .map { entities ->
                         Log.d("ChatViewModel", "[State] Mapping ${entities.size} entities for conv $convId")
                         mapEntitiesToUiMessages(entities)
@@ -123,54 +154,45 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         }
                         emit(emptyList())
                     }
+            }
         }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000L),
-        initialValue = emptyList()
-    )
+            .stateIn(scope = viewModelScope, started = SharingStarted.WhileSubscribed(5000L), initialValue = emptyList())
 
     private val welcomeMessageText = "Olá! 😊 Eu sou o Mente Sã, seu assistente virtual de saúde mental, e é um prazer te conhecer. Como você está se sentindo hoje? Estou aqui para te acompanhar com empatia e respeito, oferecendo um espaço seguro e acolhedor para você se expressar. Existe algo em particular que gostaria de conversar ou explorar?"
 
     private val menteSaSystemPrompt = """
-    Você é o Mente Sã, um assistente virtual especializado exclusivamente em saúde mental, desenvolvido para oferecer suporte empático e baseado em evidências científicas.
+    ## Persona e Propósito Central
+    Você é Mente Sã, um companheiro virtual empático e conhecedor, desenvolvido para oferecer um espaço seguro, confidencial e acolhedor. Seu propósito principal é conversar com os usuários, ouvir seus desabafos, ajudá-los a explorar seus sentimentos, pensamentos e desafios do dia a dia, e oferecer perspectivas e insights baseados em princípios da psicologia, com ênfase especial em conceitos e técnicas da Terapia Cognitivo-Comportamental (TCC), além de noções básicas de psicanálise e compreensão geral de temas psiquiátricos. Você NÃO é um terapeuta, mas sim um apoio conversacional inteligente e sensível.
 
-    ## LIMITAÇÕES IMPORTANTES:
-    1. Você DEVE se recusar a responder qualquer pergunta não relacionada à saúde mental.
-    2. NÃO responda perguntas sobre física, química, matemática, história, geografia, política, esportes, entretenimento, tecnologia ou qualquer outro assunto não diretamente relacionado à saúde mental.
-    3. Quando o usuário fizer uma pergunta fora do escopo, responda: "Desculpe, sou especializado apenas em temas de saúde mental. Posso ajudar você com questões relacionadas à ansiedade, depressão, técnicas de autocuidado ou outros assuntos ligados ao bem-estar emocional."
-    4. Nunca forneça respostas parciais a tópicos fora do escopo, mesmo que pareçam ter alguma conexão com saúde mental.
-    5. NUNCA forneça diagnósticos médicos. Sempre esclareça que suas informações não substituem avaliação profissional.
-    
-    ## TÓPICOS PERMITIDOS:
-    - Transtornos mentais: ansiedade, depressão, transtorno bipolar, TOC, TEPT, e outros
-    - Técnicas de meditação, mindfulness e gerenciamento de estresse
-    - Métodos de autocuidado e promoção de bem-estar emocional
-    - Comunicação saudável e desenvolvimento de relacionamentos interpessoais
-    - Sono e sua relação com a saúde mental
-    - Exercícios físicos e alimentação no contexto da saúde mental
-    - Estratégias para regular emoções e desenvolver resiliência
-    - Recursos e opções de tratamento para condições de saúde mental
-    - Práticas de autocompaixão e desenvolvimento de autoestima saudável
-    
-    ## ESTILO DE RESPOSTA:
-    - Seja empático e acolhedor, demonstrando compreensão das dificuldades do usuário
-    - Use linguagem acessível e evite jargões técnicos desnecessários
-    - Forneça informações precisas e baseadas em evidências científicas atualizadas
-    - Ofereça sugestões práticas e aplicáveis ao contexto do usuário
-    - Normalize as experiências de saúde mental para reduzir o estigma
-    - Incentive a busca por ajuda profissional quando apropriado
-    - Adapte o tom para ser reconfortante em momentos de crise e encorajador quando apropriado
-    - Mantenha um equilíbrio entre validar sentimentos e oferecer perspectivas construtivas
-    
-    ## SITUAÇÕES DE RISCO:
-    - Em casos de ideação suicida ou autolesão, responda com empatia e urgência
-    - Direcione imediatamente para recursos de crise (como CVV - 188 no Brasil)
-    - Nunca minimize esses sentimentos ou sugira que são "apenas uma fase"
-    - Enfatize que ajuda está disponível e que sentimentos intensos são temporários
+    ## Base de Conhecimento e Capacidades
+    1. **Psicologia (Foco Principal):**
+       - **TCC:** Conceitos como pensamentos automáticos, distorções cognitivas, crenças centrais, reestruturação cognitiva, técnicas de exposição gradual, ativação comportamental e resolução de problemas.
+       - **Psicologia Positiva:** Conceitos de bem-estar, gratidão e forças pessoais.
+       - **Habilidades de Comunicação:** Assertividade e comunicação não-violenta.
+    2. **Psicanálise:** Conceitos introdutórios sobre inconsciente e mecanismos de defesa.
+    3. **Psiquiatria:** Conhecimentos gerais sobre sintomas de transtornos (como ansiedade, depressão, etc.).
+    4. **Saúde Mental:** Técnicas de gerenciamento de estresse, mindfulness, higiene do sono e autocuidado.
 
-    Seu objetivo principal é criar um espaço seguro para discussões sobre saúde mental, oferecendo suporte informativo e emocional que promova o bem-estar do usuário.
-""".trimIndent()
+    ## Estilo de Interação e Tom
+    - **Empático e Acolhedor:** Linguagem calorosa e validante.
+    - **Paciente e Não-Julgador:** Ambiente seguro para o usuário.
+    - **Curioso e Reflexivo:** Estímulo à autoexploração.
+    - **Psicoeducativo:** Explicações simples dos conceitos.
+    - **Encorajador:** Incentivo a pequenos passos e autocuidado.
+
+    ## Limites e Restrições
+    1. **NÃO FAÇA DIAGNÓSTICOS:** Apenas um profissional pode diagnosticar.
+    2. **NÃO SUBSTITUA TERAPIA:** Você é um apoio, não um substituto para acompanhamento terapêutico.
+    3. **FOCO NO BEM-ESTAR:** Redirecione temas fora do escopo.
+    4. **EVITE CONSELHOS DIRETOS:** Oriente sem dar ordens diretas.
+    5. **SITUAÇÕES DE CRISE:** Direcione para recursos imediatos (ex.: CVV).
+
+    ## Quem é você?
+    Ao ser perguntado "Quem é você?" responda apenas com a mensagem de boas-vindas.
+
+    ## Objetivo Final
+    Ser um companheiro virtual que promove autoconhecimento e bem-estar, dentro dos limites éticos e de segurança.
+    """.trimIndent()
 
     private val generativeModel = GenerativeModel(
         modelName = "gemini-2.0-flash",
@@ -179,35 +201,40 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         requestOptions = RequestOptions(timeout = 60000)
     )
 
-    init {
-        loadInitialConversationOrStartNew()
+    // --- Funções de Ação e Comunicação ---
+
+    fun handleLogout() {
+        startNewConversation()
+        _clearConversationListEvent.value = true
+        _showConversations.value = false
+        viewModelScope.launch {
+            delay(300)
+            _clearConversationListEvent.value = false
+        }
     }
 
-    // Função auxiliar para determinar o tipo de conversa
+    fun handleLogin() {
+        _showConversations.value = true
+    }
+
     private fun determineConversationType(title: String, id: Long): ConversationType {
         val lowercaseTitle = title.lowercase()
-
         return when {
             lowercaseTitle.contains("ansiedade") ||
                     lowercaseTitle.contains("medo") ||
                     lowercaseTitle.contains("preocup") -> ConversationType.EMOTIONAL
-
             lowercaseTitle.contains("depress") ||
                     lowercaseTitle.contains("triste") ||
                     lowercaseTitle.contains("terapia") ||
                     lowercaseTitle.contains("tratamento") -> ConversationType.THERAPEUTIC
-
             lowercaseTitle.contains("eu") ||
                     lowercaseTitle.contains("minha") ||
                     lowercaseTitle.contains("meu") ||
                     lowercaseTitle.contains("como me") -> ConversationType.PERSONAL
-
             lowercaseTitle.contains("importante") ||
                     lowercaseTitle.contains("urgente") ||
                     lowercaseTitle.contains("lembrar") -> ConversationType.HIGHLIGHTED
-
             else -> {
-                // Distribuição aleatória mas determinística para o restante
                 when ((id % 5)) {
                     0L -> ConversationType.GENERAL
                     1L -> ConversationType.PERSONAL
@@ -222,15 +249,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private fun loadInitialConversationOrStartNew() {
         viewModelScope.launch {
             delay(150)
-            val initialDisplayList = conversationListForDrawer.value
-            Log.d("ChatViewModel", "[Init] Initial display list check (using .value): ${initialDisplayList.size}")
-            val latestConversationId = initialDisplayList.firstOrNull()?.id
-            if (_currentConversationId.value == null) {
-                _currentConversationId.value = latestConversationId ?: NEW_CONVERSATION_ID
-                Log.i("ChatViewModel", "[Init] Setting initial conversation ID to: ${_currentConversationId.value}")
-            } else {
-                Log.d("ChatViewModel","[Init] Initial conversation ID already set to ${_currentConversationId.value}. Skipping.")
-            }
+            _currentConversationId.value = NEW_CONVERSATION_ID
+            Log.i("ChatViewModel", "[Init] App iniciado com nova conversa (sem restaurar estado anterior).")
         }
     }
 
@@ -268,7 +288,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             _errorMessage.value = "Aguarde a resposta anterior."
             return
         }
-
         _loadingState.value = LoadingState.LOADING
         _errorMessage.value = null
 
@@ -286,7 +305,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         ConversationMetadataEntity(
                             conversationId = targetConversationId,
                             customTitle = null,
-                            userId = currentUserId
+                            userId = _userIdFlow.value
                         )
                     )
                 } catch (e: Exception) {
@@ -307,7 +326,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         if (this.isProhibitedTopic(userMessageText)) {
             Log.w("ChatViewModel", "Prohibited topic detected: '${userMessageText.take(50)}...'")
-
             val botResponse = "Desculpe, sou especializado apenas em temas de saúde mental. Posso ajudar você com ansiedade, depressão, técnicas de autocuidado ou outros assuntos relacionados ao bem-estar emocional."
             saveMessageToDb(ChatMessage(botResponse, Sender.BOT), targetConversationId)
             _loadingState.value = LoadingState.IDLE
@@ -316,11 +334,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val currentMessagesFromDb = chatDao.getMessagesForConversation(targetConversationId).first()
+                val currentMessagesFromDb = chatDao.getMessagesForConversation(targetConversationId, _userIdFlow.value).first()
                 val historyForApi = mapMessagesToApiHistory(mapEntitiesToUiMessages(currentMessagesFromDb))
                 Log.d("ChatViewModel", "API Call: Sending ${historyForApi.size} history messages for conv $targetConversationId")
                 callGeminiApi(userMessageText, historyForApi, targetConversationId)
-
             } catch (e: Exception) {
                 Log.e("ChatViewModel", "Error preparing history or calling API for conv $targetConversationId", e)
                 withContext(Dispatchers.Main) {
@@ -339,14 +356,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         Log.i("ChatViewModel", "Action: Deleting conversation $conversationId and its metadata")
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                chatDao.clearConversation(conversationId)
+                chatDao.clearConversation(conversationId, _userIdFlow.value)
                 metadataDao.deleteMetadata(conversationId)
-
                 Log.i("ChatViewModel", "Conversation $conversationId and metadata deleted successfully from DB.")
-
                 if (_currentConversationId.value == conversationId) {
-                    val remainingConversations = chatDao.getConversationsForUser(currentUserId).first()
-
+                    val remainingConversations = chatDao.getConversationsForUser(_userIdFlow.value).first()
                     withContext(Dispatchers.Main) {
                         val nextConversationId = remainingConversations.firstOrNull()?.id
                         if (nextConversationId != null) {
@@ -379,12 +393,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             _errorMessage.value = "O título não pode ficar em branco."
             return
         }
-
         Log.i("ChatViewModel", "Action: Renaming conversation $conversationId to '$trimmedTitle'")
         val metadata = ConversationMetadataEntity(
             conversationId = conversationId,
             customTitle = trimmedTitle,
-            userId = currentUserId
+            userId = _userIdFlow.value
         )
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -400,105 +413,39 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun isProhibitedTopic(message: String): Boolean {
-        // Categorias de tópicos proibidos para facilitar manutenção
         val prohibitedTopics = mapOf(
-            "Ciências Exatas" to listOf(
-                "física", "química", "matemática", "equação", "fórmula", "cálculo",
-                "átomo", "molécula", "reação", "elemento", "tabela periódica",
-                "teorema", "álgebra", "geometria", "trigonometria", "derivada", "integral",
-                "newton", "einstein", "celsius", "kelvin", "tesla", "feynman"
-            ),
-            "Astronomia" to listOf(
-                "astronomia", "planeta", "galáxia", "sistema solar", "estrela", "universo",
-                "nasa", "spacex", "satélite", "marte", "júpiter", "lua", "eclipse", "cometa"
-            ),
-            "História/Geografia" to listOf(
-                "história", "geografia", "guerra", "império", "revolução", "dinastia",
-                "continente", "país", "capital", "mapa", "relevo", "clima", "população",
-                "guerra mundial", "idade média", "renascimento", "colonização", "civilização"
-            ),
-            "Política/Economia" to listOf(
-                "política", "economia", "presidente", "eleição", "partido", "congresso",
-                "senador", "deputado", "ministro", "inflação", "juros", "bolsa", "mercado",
-                "imposto", "orçamento", "déficit", "superávit", "banco central", "governo"
-            ),
-            "Entretenimento" to listOf(
-                "esporte", "futebol", "basquete", "vôlei", "filme", "novela", "série",
-                "time", "campeonato", "copa", "olimpíada", "ator", "atriz", "diretor",
-                "netflix", "cinema", "teatro", "show", "música", "concerto", "festival"
-            ),
-            "Tecnologia" to listOf(
-                "computador", "programação", "código", "app", "desenvolvimento", "software",
-                "hardware", "internet", "rede", "algoritmo", "linguagem", "java", "python",
-                "website", "servidor", "banco de dados", "cloud", "api", "framework"
-            ),
-            "Linguística" to listOf(
-                "língua", "gramática", "sintaxe", "semântica", "verbo", "substantivo",
-                "pronome", "preposição", "ortografia", "fonética", "tradução", "idioma"
-            )
+            "Ciências Exatas" to listOf("física", "química", "matemática", "equação", "fórmula", "cálculo", "átomo", "molécula", "reação", "elemento", "tabela periódica", "teorema", "álgebra", "geometria", "trigonometria", "derivada", "integral", "newton", "einstein", "celsius", "kelvin", "tesla", "feynman"),
+            "Astronomia" to listOf("astronomia", "planeta", "galáxia", "sistema solar", "estrela", "universo", "nasa", "spacex", "satélite", "marte", "júpiter", "lua", "eclipse", "cometa"),
+            "História/Geografia" to listOf("história", "geografia", "guerra", "império", "revolução", "dinastia", "continente", "país", "capital", "mapa", "relevo", "clima", "população", "guerra mundial", "idade média", "renascimento", "colonização", "civilização"),
+            "Política/Economia" to listOf("política", "economia", "presidente", "eleição", "partido", "congresso", "senador", "deputado", "ministro", "inflação", "juros", "bolsa", "mercado", "imposto", "orçamento", "déficit", "superávit", "banco central", "governo"),
+            "Entretenimento" to listOf("esporte", "futebol", "basquete", "vôlei", "filme", "novela", "série", "time", "campeonato", "copa", "olimpíada", "ator", "atriz", "diretor", "netflix", "cinema", "teatro", "show", "música", "concerto", "festival"),
+            "Tecnologia" to listOf("computador", "programação", "código", "app", "desenvolvimento", "software", "hardware", "internet", "rede", "algoritmo", "linguagem", "java", "python", "website", "servidor", "banco de dados", "cloud", "api", "framework"),
+            "Linguística" to listOf("língua", "gramática", "sintaxe", "semântica", "verbo", "substantivo", "pronome", "preposição", "ortografia", "fonética", "tradução", "idioma")
         )
-
-        // Converter a mensagem para minúsculo para comparação case-insensitive
         val lowercaseMessage = message.lowercase()
-
-        // Verificar se a mensagem contém palavras-chave proibidas
-        // Usando regex com limites de palavra para evitar falsos positivos
         return prohibitedTopics.values.flatten().any { keyword ->
-            // Regex para corresponder à palavra completa ou parte de uma palavra composta
             val pattern = "\\b$keyword\\b|\\b$keyword-|\\b$keyword\\s"
             pattern.toRegex().containsMatchIn(lowercaseMessage)
         }
     }
 
     private fun isValidResponse(response: String): Boolean {
-        // Padrões de frases que indicam que a resposta está fora do escopo
         val prohibitedPhrases = listOf(
-            // Física
-            "na física", "em física", "a física", "física é", "física clássica", "física quântica",
-            "leis da física", "conceito físico", "fenômeno físico", "teoria física",
-
-            // Matemática
-            "em matemática", "na matemática", "fórmula", "equação", "cálculo de",
-            "teorema", "matemática é", "matematicamente", "valor numérico", "resolva",
-
-            // História
-            "na história", "história do", "período histórico", "guerra mundial",
-            "revolução", "império", "dinastia", "século", "era", "idade média",
-
-            // Política
-            "presidente", "governador", "político", "eleição", "partido",
-            "congresso", "senado", "câmara", "ministro", "governo",
-
-            // Astronomia
-            "astronomia", "planeta", "sistema solar", "galáxia", "estrela",
-            "constelação", "universo", "nasa", "telescópio", "órbita",
-
-            // Tecnologia/Computação
-            "computação", "programação", "código fonte", "algoritmo", "linguagem de programação",
-            "software", "hardware", "aplicativo", "desenvolvimento web", "sistema operacional",
-
-            // Esportes/Entretenimento
-            "esporte", "time", "jogador", "campeonato", "liga", "filme", "série",
-            "ator", "diretor", "cinema", "televisão", "streaming", "episódio"
+            "na física", "em física", "a física", "física é", "física clássica", "física quântica", "leis da física", "conceito físico", "fenômeno físico", "teoria física",
+            "em matemática", "na matemática", "fórmula", "equação", "cálculo de", "teorema", "matemática é", "matematicamente", "valor numérico", "resolva",
+            "na história", "história do", "período histórico", "guerra mundial", "revolução", "império", "dinastia", "século", "era", "idade média",
+            "presidente", "governador", "político", "eleição", "partido", "congresso", "senado", "câmara", "ministro", "governo",
+            "astronomia", "planeta", "sistema solar", "galáxia", "estrela", "constelação", "universo", "nasa", "telescópio", "órbita",
+            "computação", "programação", "código fonte", "algoritmo", "linguagem de programação", "software", "hardware", "aplicativo", "desenvolvimento web", "sistema operacional",
+            "esporte", "time", "jogador", "campeonato", "liga", "filme", "série", "ator", "diretor", "cinema", "televisão", "streaming", "episódio"
         )
-
-        // Exceções para permitir contextos de saúde mental
         val allowedContexts = listOf(
-            "no contexto da saúde mental", "relacionado à saúde mental",
-            "impacto na saúde mental", "afeta a saúde mental",
-            "bem-estar emocional", "bem-estar psicológico",
-            "técnica terapêutica", "abordagem terapêutica"
+            "no contexto da saúde mental", "relacionado à saúde mental", "impacto na saúde mental", "afeta a saúde mental", "bem-estar emocional", "bem-estar psicológico", "técnica terapêutica", "abordagem terapêutica"
         )
-
         val lowercaseResponse = response.lowercase()
-
-        // Verificar se há frases proibidas que não estão em contextos permitidos
         return !prohibitedPhrases.any { phrase ->
-            // Verifica se contém a frase proibida
             if (lowercaseResponse.contains(phrase)) {
-                // Verifica se está em um contexto permitido
                 !allowedContexts.any { context ->
-                    // Procura o contexto próximo à frase proibida (50 caracteres antes e depois)
                     val startIndex = maxOf(0, lowercaseResponse.indexOf(phrase) - 50)
                     val endIndex = minOf(lowercaseResponse.length, lowercaseResponse.indexOf(phrase) + phrase.length + 50)
                     val surroundingText = lowercaseResponse.substring(startIndex, endIndex)
@@ -510,11 +457,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private suspend fun callGeminiApi(
-        userMessageText: String,
-        historyForApi: List<Content>,
-        conversationId: Long
-    ) {
+    private suspend fun callGeminiApi(userMessageText: String, historyForApi: List<Content>, conversationId: Long) {
         var finalBotResponseText: String? = null
         try {
             Log.d("ChatViewModel", "Starting Gemini API call for conv $conversationId")
@@ -523,7 +466,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 content(role = "user") { text(userMessageText) }
             )
             var currentBotText = ""
-
             responseFlow
                 .mapNotNull { it.text }
                 .onEach { textPart ->
@@ -534,7 +476,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     if (cause == null) {
                         Log.i("ChatViewModel", "Stream completed successfully for conv $conversationId.")
                         finalBotResponseText = currentBotText
-
                         if (!finalBotResponseText.isNullOrBlank() && !isValidResponse(finalBotResponseText!!)) {
                             Log.w("ChatViewModel", "Invalid response detected for conv $conversationId, replacing with fallback")
                             finalBotResponseText = "Desculpe, não posso fornecer essa informação pois está fora do escopo de saúde mental. Como posso ajudar com seu bem-estar emocional hoje?"
@@ -560,7 +501,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     throw e
                 }
                 .collect()
-
         } catch (e: Exception) {
             Log.e("ChatViewModel", "Error setting up or starting Gemini API call for conv $conversationId", e)
             withContext(Dispatchers.Main) {
@@ -604,45 +544,37 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             text = message.text,
             sender = message.sender.name,
             timestamp = timestamp,
-            userId = currentUserId
+            userId = _userIdFlow.value
         )
     }
 
     private fun mapMessagesToApiHistory(messages: List<ChatMessage>): List<Content> {
-        return messages
-            .takeLast(MAX_HISTORY_MESSAGES)
+        return messages.takeLast(MAX_HISTORY_MESSAGES)
             .map { msg ->
                 val role = if (msg.sender == Sender.USER) "user" else "model"
                 return@map content(role = role) { text(msg.text) }
             }
     }
 
-    suspend fun getDisplayTitle(conversationId: Long): String {
-        return withContext(Dispatchers.IO) {
-            var titleResult: String
-            if (conversationId == NEW_CONVERSATION_ID) {
-                titleResult = "Nova Conversa"
-            } else {
-                try {
-                    val customTitle = metadataDao.getCustomTitle(conversationId)
-                    if (!customTitle.isNullOrBlank()) {
-                        Log.d("ChatViewModel", "Using custom title for $conversationId: '$customTitle'")
-                        titleResult = customTitle
-                    } else {
-                        titleResult = generateFallbackTitle(conversationId)
-                    }
-                } catch (dbException: Exception) {
-                    Log.e("ChatViewModel", "Error fetching title data for conv $conversationId", dbException)
-                    titleResult = "Conversa $conversationId"
+    // Método para uso síncrono dentro do combine (não ideal para produção)
+    private fun generateFallbackTitleSync(conversationId: Long): String {
+        return try {
+            runCatching {
+                kotlinx.coroutines.runBlocking {
+                    generateFallbackTitle(conversationId)
                 }
+            }.getOrElse { ex ->
+                Log.e("ChatViewModel", "Error generating fallback title synchronously for conv $conversationId", ex)
+                "Conversa $conversationId"
             }
-            titleResult
+        } catch (e: Exception) {
+            "Conversa $conversationId"
         }
     }
 
     private suspend fun generateFallbackTitle(conversationId: Long): String = withContext(Dispatchers.IO) {
         try {
-            val firstUserMessageText = chatDao.getFirstUserMessageText(conversationId)
+            val firstUserMessageText = chatDao.getFirstUserMessageText(conversationId, _userIdFlow.value)
             if (!firstUserMessageText.isNullOrBlank()) {
                 Log.d("ChatViewModel", "Generating fallback title for $conversationId using first message.")
                 return@withContext firstUserMessageText.take(30) + if (firstUserMessageText.length > 30) "..." else ""
@@ -658,6 +590,28 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         } catch (dbException: Exception) {
             Log.e("ChatViewModel", "Error generating fallback title for conv $conversationId", dbException)
             return@withContext "Conversa $conversationId"
+        }
+    }
+
+    // Método para obter o título da conversa para exibição
+    suspend fun getDisplayTitle(conversationId: Long): String {
+        return withContext(Dispatchers.IO) {
+            if (conversationId == NEW_CONVERSATION_ID) {
+                "Nova Conversa"
+            } else {
+                try {
+                    val customTitle = metadataDao.getCustomTitle(conversationId)
+                    if (!customTitle.isNullOrBlank()) {
+                        Log.d("ChatViewModel", "Using custom title for $conversationId: '$customTitle'")
+                        customTitle
+                    } else {
+                        generateFallbackTitle(conversationId)
+                    }
+                } catch (dbException: Exception) {
+                    Log.e("ChatViewModel", "Error fetching title data for conv $conversationId", dbException)
+                    "Conversa $conversationId"
+                }
+            }
         }
     }
 

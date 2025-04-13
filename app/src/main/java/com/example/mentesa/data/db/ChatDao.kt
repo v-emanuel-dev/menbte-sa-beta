@@ -11,8 +11,8 @@ interface ChatDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMessage(message: ChatMessageEntity)
 
-    @Query("SELECT * FROM chat_messages WHERE conversation_id = :conversationId ORDER BY timestamp ASC")
-    fun getMessagesForConversation(conversationId: Long): Flow<List<ChatMessageEntity>>
+    @Query("SELECT * FROM chat_messages WHERE conversation_id = :conversationId AND user_id = :userId ORDER BY timestamp ASC")
+    fun getMessagesForConversation(conversationId: Long, userId: String? = null): Flow<List<ChatMessageEntity>>
 
     @Query("""
         SELECT conversation_id as id, MAX(timestamp) as lastTimestamp
@@ -33,15 +33,17 @@ interface ChatDao {
 
     @Query("""
         SELECT message_text FROM chat_messages
-        WHERE conversation_id = :conversationId AND sender_type = 'USER'
+        WHERE conversation_id = :conversationId 
+        AND sender_type = 'USER'
+        AND user_id = :userId
         ORDER BY timestamp ASC
         LIMIT 1
     """)
-    suspend fun getFirstUserMessageText(conversationId: Long): String?
+    suspend fun getFirstUserMessageText(conversationId: Long, userId: String): String?
 
-    @Query("DELETE FROM chat_messages WHERE conversation_id = :conversationId")
-    suspend fun clearConversation(conversationId: Long)
+    @Query("DELETE FROM chat_messages WHERE conversation_id = :conversationId AND user_id = :userId")
+    suspend fun clearConversation(conversationId: Long, userId: String)
 
-    @Query("DELETE FROM chat_messages")
-    suspend fun clearAllMessages()
+    @Query("DELETE FROM chat_messages WHERE user_id = :userId")
+    suspend fun clearAllMessagesForUser(userId: String)
 }

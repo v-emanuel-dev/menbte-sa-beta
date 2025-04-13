@@ -12,7 +12,20 @@
           "package_name": "com.example.mentesa"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1067359774815-ahatelk0tqu4m8htkldg0gffofctlor2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.mentesa",
+            "certificate_hash": "f726439b292c522528ea17674f6f18484ff3b97c"
+          }
+        },
+        {
+          "client_id": "1067359774815-lgm0ns1gglqsdoq2ebp1dh62rr6hiiuq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCVagm0JLtGMWwMV6whzmIKanC0B9tPt-g"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1067359774815-lgm0ns1gglqsdoq2ebp1dh62rr6hiiuq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

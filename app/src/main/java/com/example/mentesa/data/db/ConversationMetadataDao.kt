@@ -11,15 +11,18 @@ interface ConversationMetadataDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdateMetadata(metadata: ConversationMetadataEntity)
 
-    @Query("SELECT * FROM conversation_metadata")
-    fun getAllMetadata(): Flow<List<ConversationMetadataEntity>>
-
-    @Query("SELECT * FROM conversation_metadata WHERE user_id = :userId")
-    fun getMetadataForUser(userId: String): Flow<List<ConversationMetadataEntity>>
+    @Query("SELECT * FROM conversation_metadata WHERE conversation_id = :conversationId")
+    suspend fun getMetadata(conversationId: Long): ConversationMetadataEntity?
 
     @Query("SELECT custom_title FROM conversation_metadata WHERE conversation_id = :conversationId")
     suspend fun getCustomTitle(conversationId: Long): String?
 
+    @Query("SELECT * FROM conversation_metadata WHERE user_id = :userId")
+    fun getMetadataForUser(userId: String): Flow<List<ConversationMetadataEntity>>
+
     @Query("DELETE FROM conversation_metadata WHERE conversation_id = :conversationId")
     suspend fun deleteMetadata(conversationId: Long)
+
+    @Query("DELETE FROM conversation_metadata WHERE user_id = :userId")
+    suspend fun clearAllMetadataForUser(userId: String)
 }

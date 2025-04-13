@@ -57,6 +57,7 @@ fun ChatScreen(
     val isLoading by chatViewModel.isLoading.collectAsState()
     val errorMessage by chatViewModel.errorMessage.collectAsState()
     val currentUser by authViewModel.currentUser.collectAsState()
+    val logoutEvent by authViewModel.logoutEvent.collectAsState()
 
     var userMessage by rememberSaveable { mutableStateOf("") }
     val listState = rememberLazyListState()
@@ -66,6 +67,15 @@ fun ChatScreen(
     var conversationIdToRename by remember { mutableStateOf<Long?>(null) }
     var currentTitleForDialog by remember { mutableStateOf<String?>(null) }
     var showDeleteConfirmationDialog by remember { mutableStateOf<Long?>(null) }
+
+    // Efeito para limpar a tela quando ocorrer logout
+    LaunchedEffect(logoutEvent) {
+        if (logoutEvent) {
+            userMessage = ""
+            chatViewModel.handleLogout() // Usar o método que também limpa o menu lateral
+            Log.d("ChatScreen", "Tela e menu lateral limpos após logout")
+        }
+    }
 
     LaunchedEffect(conversationIdToRename) {
         val id = conversationIdToRename

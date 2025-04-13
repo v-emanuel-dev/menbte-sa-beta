@@ -2,9 +2,13 @@ package com.example.mentesa.data.db
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "conversation_metadata")
+@Entity(
+    tableName = "conversation_metadata",
+    indices = [Index(value = ["conversation_id", "user_id"], unique = true)]
+)
 data class ConversationMetadataEntity(
     @PrimaryKey
     @ColumnInfo(name = "conversation_id")
@@ -14,5 +18,5 @@ data class ConversationMetadataEntity(
     val customTitle: String?,
 
     @ColumnInfo(name = "user_id")
-    val userId: String = "local_user"
+    val userId: String
 )
