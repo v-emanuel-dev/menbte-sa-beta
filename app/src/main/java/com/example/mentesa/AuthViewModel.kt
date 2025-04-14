@@ -22,7 +22,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val _authState = MutableStateFlow<AuthState>(AuthState.Initial)
     val authState: StateFlow<AuthState> = _authState
 
-    // Evento para comunicar que o logout ocorreu (para limpar a UI)
     private val _logoutEvent = MutableStateFlow(false)
     val logoutEvent: StateFlow<Boolean> = _logoutEvent
 
@@ -64,18 +63,11 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Tenta fazer login com o email e senha fornecidos.
-     * Se o login falhar porque o usuário não existe, automaticamente cria uma nova conta.
-     */
-
-    // Função auxiliar para validar email
     private fun isValidEmail(email: String): Boolean {
         return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
     }
 
     fun signInWithGoogle(idToken: String) {
-
         viewModelScope.launch {
             try {
                 _authState.value = AuthState.Loading
@@ -108,17 +100,14 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun logout() {
-        // Emitir evento de logout para limpar a UI
         _logoutEvent.value = true
 
-        // Fazer logout
         auth.signOut()
         _authState.value = AuthState.Initial
         Log.d("AuthViewModel", "Usuário deslogado.")
 
-        // Resetar o evento depois de um momento (para permitir que observers reajam)
         viewModelScope.launch {
-            kotlinx.coroutines.delay(300) // Aumentar o delay para garantir que todos os componentes tenham tempo de reagir
+            kotlinx.coroutines.delay(300)
             _logoutEvent.value = false
         }
     }

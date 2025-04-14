@@ -41,9 +41,7 @@ import dev.jeziellago.compose.markdowntext.MarkdownText
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.ui.unit.sp
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,7 +68,6 @@ fun ChatScreen(
     var currentTitleForDialog by remember { mutableStateOf<String?>(null) }
     var showDeleteConfirmationDialog by remember { mutableStateOf<Long?>(null) }
 
-    // Efeito para limpar a tela quando ocorrer logout
     LaunchedEffect(logoutEvent) {
         if (logoutEvent) {
             userMessage = ""
@@ -155,7 +152,6 @@ fun ChatScreen(
                             }
                         },
                         actions = {
-                            // Login/logout button with animations
                             IconButton(
                                 onClick = {
                                     if (currentUser != null) {
@@ -200,21 +196,19 @@ fun ChatScreen(
                 containerColor = MaterialTheme.colorScheme.background
             ) { paddingValues ->
                 Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                    // Background padrão mais claro e arejado
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)
                             .background(BackgroundColor)
                     ) {
-                        // Conteúdo da conversa
                         LazyColumn(
                             state = listState,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(horizontal = 16.dp),
                             contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp) // Espaçamento uniforme entre mensagens
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(messages, key = { "${it.sender}-${it.text.hashCode()}" }) { message ->
                                 MessageBubble(message = message)
@@ -225,28 +219,26 @@ fun ChatScreen(
                         }
                     }
 
-                    // Área de erro, caso exista
                     errorMessage?.let { errorMsg ->
                         Text(
                             text = "Erro: $errorMsg",
-                            color = Color.White, // Mudança para branco para maior contraste
-                            style = MaterialTheme.typography.bodyMedium, // Aumentei para bodyMedium
-                            fontWeight = FontWeight.Bold, // Aumentei para Bold para maior visibilidade
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
                                 .background(
-                                    color = Color(0xFFE53935), // Vermelho mais forte e vibrante
+                                    color = Color(0xFFE53935),
                                     shape = RoundedCornerShape(8.dp)
                                 )
-                                .padding(vertical = 8.dp, horizontal = 12.dp) // Aumentei o padding vertical
+                                .padding(vertical = 8.dp, horizontal = 12.dp)
                         )
                     }
                 }
             }
         }
 
-        // Diálogo de confirmação de exclusão
         showDeleteConfirmationDialog?.let { conversationIdToDelete ->
             AlertDialog(
                 onDismissRequest = { showDeleteConfirmationDialog = null },
@@ -288,7 +280,6 @@ fun ChatScreen(
             )
         }
 
-        // Diálogo de renomeação de conversa
         conversationIdToRename?.let { id ->
             if (currentTitleForDialog != null) {
                 RenameConversationDialog(
@@ -306,7 +297,6 @@ fun ChatScreen(
         }
     }
 
-    // Auto-scroll para a última mensagem quando enviar
     LaunchedEffect(messages.size, isLoading) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
@@ -314,9 +304,6 @@ fun ChatScreen(
     }
 }
 
-// Substitua a função MessageInput atual no seu ChatScreen.kt por esta versão corrigida:
-
-// Substitua a função MessageInput no ChatScreen.kt com esta versão expansível:
 
 @Composable
 fun MessageInput(
@@ -325,14 +312,11 @@ fun MessageInput(
     onSendClick: () -> Unit,
     isSendEnabled: Boolean
 ) {
-    // Estado para controlar se o input está expandido
     var isExpanded by remember { mutableStateOf(false) }
 
-    // Calcular se deve mostrar o botão de expansão baseado no conteúdo
     val lineCount = if (message.isBlank()) 1 else message.count { it == '\n' } + 1
     val showExpandButton = lineCount >= 2 || message.length > 80
 
-    // Altura do input baseada no estado
     val minHeight = 56.dp
     val maxHeight = 150.dp
     val currentHeight = if (isExpanded) maxHeight else minHeight
@@ -353,7 +337,6 @@ fun MessageInput(
                 .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Campo de texto
             TextField(
                 value = message,
                 onValueChange = onMessageChange,
@@ -391,18 +374,16 @@ fun MessageInput(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Coluna para os botões com espaçamento adequado
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Botão de expansão (apenas quando necessário)
                 if (showExpandButton) {
                     Box(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        background(Color.LightGray.copy(alpha = 0.2f))
+                            .background(Color.LightGray.copy(alpha = 0.2f))
                             .clickable { isExpanded = !isExpanded },
                         contentAlignment = Alignment.Center
                     ) {
@@ -424,10 +405,9 @@ fun MessageInput(
                     }
                 }
 
-                // Botão de enviar completamente separado
                 Box(
                     modifier = Modifier
-                        .padding(bottom = 2.dp) // Espaço extra na parte inferior
+                        .padding(bottom = 2.dp)
                         .size(48.dp)
                         .clip(CircleShape)
                         .background(
@@ -457,7 +437,6 @@ fun MessageInput(
 fun MessageBubble(message: ChatMessage) {
     val isUserMessage = message.sender == Sender.USER
 
-    // Formas mais arredondadas para as bolhas
     val userShape = RoundedCornerShape(
         topStart = 20.dp,
         topEnd = 20.dp,
@@ -495,15 +474,15 @@ fun MessageBubble(message: ChatMessage) {
                     containerColor = UserBubbleColor,
                 ),
                 elevation = CardDefaults.cardElevation(
-                    defaultElevation = 2.dp // Adicionando uma leve elevação para maior contraste visual
+                    defaultElevation = 2.dp
                 )
             ) {
                 SelectionContainer {
                     Text(
                         text = message.text,
-                        color = Color.Black, // Garantindo texto preto para máximo contraste
+                        color = Color.Black,
                         style = MaterialTheme.typography.bodyLarge.copy(
-                            fontWeight = FontWeight.Medium // Texto um pouco mais forte
+                            fontWeight = FontWeight.Medium
                         ),
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
                     )
@@ -526,18 +505,15 @@ fun MessageBubble(message: ChatMessage) {
                         containerColor = BotBubbleColor
                     ),
                     elevation = CardDefaults.cardElevation(
-                        defaultElevation = 2.dp // Adicionando uma leve elevação para maior contraste visual
+                        defaultElevation = 2.dp
                     )
                 ) {
-                    // O componente MarkdownText não aceita fontWeight diretamente
-                    // Envolvendo em um Box para aplicar o padding
                     Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                         MarkdownText(
                             markdown = message.text,
-                            color = Color.White, // Garantindo texto branco para máximo contraste
+                            color = Color.White,
                             fontSize = MaterialTheme.typography.bodyLarge.fontSize,
-                            // Removido: fontWeight = FontWeight.Medium,
-                            linkColor = Color(0xFFB8E2FF), // Cor de link mais clara para contraste
+                            linkColor = Color(0xFFB8E2FF),
                             onClick = { }
                         )
                     }
@@ -577,7 +553,6 @@ fun TypingIndicatorAnimation(
         }
     }
 
-    // Card para bolha de digitação com cantos arredondados e sombra suave
     Card(
         modifier = modifier
             .wrapContentWidth()

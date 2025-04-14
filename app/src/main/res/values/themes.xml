@@ -1,25 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base application theme -->
     <style name="Theme.MenteSa" parent="Theme.Material3.Light.NoActionBar">
-        <!-- Personalize seu tema aqui -->
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryDark">@color/primary_dark</item>
         <item name="colorAccent">@color/secondary</item>
     </style>
 
-    <!-- Tema da SplashScreen com a nova identidade visual -->
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
-        <!-- A cor de fundo da SplashScreen -->
         <item name="windowSplashScreenBackground">@color/primary</item>
-
-        <!-- Usando um drawable direto em vez de um layer-list -->
         <item name="windowSplashScreenAnimatedIcon">@drawable/baseline_account_circle_24</item>
-
-        <!-- Definindo a cor do ícone -->
         <item name="windowSplashScreenIconBackgroundColor">@color/white</item>
-
-        <!-- Animação opcional quando a splash saí da tela -->
         <item name="postSplashScreenTheme">@style/Theme.MenteSa</item>
     </style>
 </resources>

@@ -1,16 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Cores primárias da nova identidade visual -->
     <color name="primary">#408E5F</color>
     <color name="primary_dark">#31694A</color>
     <color name="secondary">#75B0A1</color>
     <color name="background">#F0F7F4</color>
 
-    <!-- Cores de texto -->
     <color name="text_dark">#121212</color>
     <color name="text_light">#FFFFFF</color>
 
-    <!-- Cores padrão do sistema -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

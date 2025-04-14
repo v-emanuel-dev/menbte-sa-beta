@@ -2,12 +2,11 @@
 agp = "8.9.1"
 composeMarkdown = "0.3.5"
 credentials = "1.5.0"
-firebase-bom = "33.1.0"  # Mantenha apenas esta versão, removendo firebaseBom
+firebase-bom = "33.1.0"
 kotlin = "2.0.21"
 ksp = "2.0.21-1.0.28"
 composeCompiler = "2.0.21"
 coreKtx = "1.10.1"
-playServicesAuth = "21.3.0"
 playServicesAuthVersion = "21.2.0"
 room = "2.6.1"
 material = "1.12.0"
@@ -23,8 +22,6 @@ junit = "4.13.2"
 junitVersion = "1.1.5"
 espressoCore = "3.5.1"
 kotlinxCoroutinesTest = "1.7.3"
-firebase-auth = "22.3.1"
-firebase-firestore = "24.10.1"
 uiTextGoogleFonts = "1.7.8"
 
 [libraries]
@@ -43,7 +40,6 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version = "1.7.8" }
 compose-markdown = { module = "com.github.jeziellago:compose-markdown", version.ref = "composeMarkdown" }
-firebase-auth-ktx = { module = "com.google.firebase:firebase-auth-ktx" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 generativeai = { group = "com.google.ai.client.generativeai", name = "generativeai", version.ref = "generativeai" }
@@ -64,7 +60,6 @@ kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebase-bom" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth-ktx" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore-ktx" }
-play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
 play-services-auth-v2120 = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuthVersion" }
 androidx-ui-text-google-fonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts", version.ref = "uiTextGoogleFonts" }
 

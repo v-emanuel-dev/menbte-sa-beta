@@ -26,23 +26,18 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalAnimationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Instalar a splash screen antes de qualquer outra configuração
         val splashScreen = installSplashScreen()
 
-        // Configurar a animação de saída da splash screen
         splashScreen.setOnExitAnimationListener { splashScreenViewProvider ->
-            // Animação de fade-out ao sair da splash
             val splashScreenView = splashScreenViewProvider.view
             val fadeOut = ObjectAnimator.ofFloat(splashScreenView, View.ALPHA, 1f, 0f)
             fadeOut.interpolator = AccelerateInterpolator()
             fadeOut.duration = 500L
 
             fadeOut.doOnEnd {
-                // Remover a splash view quando a animação terminar
                 splashScreenViewProvider.remove()
             }
 
-            // Iniciar a animação
             fadeOut.start()
         }
 
@@ -56,26 +51,21 @@ class MainActivity : ComponentActivity() {
                 val currentUser by authViewModel.currentUser.collectAsState()
                 val isLoggedIn = currentUser != null
 
-                // Define a tela de autenticação se o usuário ainda não estiver logado
                 var showAuthScreen by remember { mutableStateOf(!isLoggedIn) }
 
-                // Estado do Snackbar com estilo personalizado
                 val snackbarHostState = remember { SnackbarHostState() }
                 val coroutineScope = rememberCoroutineScope()
 
-                // Scaffold para poder mostrar Snackbar
                 Scaffold(
                     snackbarHost = {
                         SnackbarHost(hostState = snackbarHostState)
                     }
                 ) { paddingValues ->
                     Box(modifier = Modifier.padding(paddingValues)) {
-                        // Usando @OptIn para marcar o uso de API experimental
                         AnimatedContent(
                             targetState = showAuthScreen,
                             transitionSpec = {
                                 if (targetState) {
-                                    // Entrando na tela de auth
                                     slideInHorizontally(
                                         initialOffsetX = { it },
                                         animationSpec = tween(durationMillis = 300)
@@ -85,7 +75,6 @@ class MainActivity : ComponentActivity() {
                                                 animationSpec = tween(durationMillis = 300)
                                             ) + fadeOut(animationSpec = tween(durationMillis = 300))
                                 } else {
-                                    // Voltando para o chat
                                     slideInHorizontally(
                                         initialOffsetX = { -it },
                                         animationSpec = tween(durationMillis = 300)
@@ -105,7 +94,6 @@ class MainActivity : ComponentActivity() {
                                         chatViewModel.startNewConversation()
                                         showAuthScreen = false
 
-                                        // Mostra o Snackbar para mensagem de login bem-sucedido
                                         coroutineScope.launch {
                                             snackbarHostState.showSnackbar(
                                                 message = "Login realizado com sucesso!",
@@ -126,7 +114,6 @@ class MainActivity : ComponentActivity() {
                                         authViewModel.logout()
                                         chatViewModel.handleLogout()
 
-                                        // Mostra o Snackbar para a mensagem de logout
                                         coroutineScope.launch {
                                             snackbarHostState.showSnackbar(
                                                 message = "Logout realizado com sucesso!",

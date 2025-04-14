@@ -1,3 +1,4 @@
+// Primeiro código (AppDrawerContent) sem comentários:
 package com.example.mentesa
 
 import androidx.compose.animation.animateColorAsState
@@ -27,7 +28,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.mentesa.ui.theme.*
 
-// Usando a constante NEW_CONVERSATION_ID definida no ChatViewModel
 
 @Composable
 fun AppDrawerContent(
@@ -49,7 +49,6 @@ fun AppDrawerContent(
                 .fillMaxSize()
                 .padding(vertical = 16.dp)
         ) {
-            // Cabeçalho do drawer
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -61,7 +60,6 @@ fun AppDrawerContent(
                         .padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Ícone do app
                     Box(
                         modifier = Modifier
                             .size(48.dp)
@@ -79,7 +77,6 @@ fun AppDrawerContent(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    // Título do app com maior contraste
                     Text(
                         text = stringResource(id = R.string.app_name),
                         style = MaterialTheme.typography.titleLarge,
@@ -91,7 +88,6 @@ fun AppDrawerContent(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Divisor horizontal
             Divider(
                 modifier = Modifier.fillMaxWidth(),
                 thickness = 1.dp,
@@ -100,7 +96,6 @@ fun AppDrawerContent(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Botão "Nova Conversa"
             NewChatButton(
                 onClick = onNewChatClick,
                 isSelected = currentConversationId == null || currentConversationId == NEW_CONVERSATION_ID
@@ -108,9 +103,7 @@ fun AppDrawerContent(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Lista de conversas
             if (conversationDisplayItems.isNotEmpty()) {
-                // Título da seção com maior contraste
                 Text(
                     text = "Suas conversas",
                     style = MaterialTheme.typography.labelLarge.copy(
@@ -135,7 +128,6 @@ fun AppDrawerContent(
                     }
                 }
             } else {
-                // Mensagem quando não há conversas - com maior contraste
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -165,7 +157,6 @@ fun AppDrawerContent(
                 }
             }
 
-            // Rodapé com versão do app - com maior contraste
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -214,7 +205,6 @@ fun NewChatButton(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Ícone de adição em um círculo
             Box(
                 modifier = Modifier
                     .size(36.dp)
@@ -232,7 +222,6 @@ fun NewChatButton(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Texto "Nova conversa" com maior contraste
             Text(
                 text = "Nova conversa",
                 style = MaterialTheme.typography.bodyLarge,
@@ -276,7 +265,6 @@ fun ConversationItem(
                 .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Círculo com a primeira letra do título como ícone
             Box(
                 modifier = Modifier
                     .size(36.dp)
@@ -294,18 +282,16 @@ fun ConversationItem(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Título da conversa com maior contraste
             Text(
                 text = item.displayTitle,
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (isSelected) PrimaryColor else Color.Black, // Mudado para preto
+                color = if (isSelected) PrimaryColor else Color.Black,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
 
-            // Botões de ação (apenas visíveis quando selecionado ou em hover)
             Row {
                 IconButton(
                     onClick = { onRenameClick() },
@@ -314,7 +300,7 @@ fun ConversationItem(
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Renomear",
-                        tint = Color.DarkGray, // Mudado para DarkGray para maior contraste
+                        tint = Color.DarkGray,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -326,7 +312,7 @@ fun ConversationItem(
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Excluir",
-                        tint = Color.DarkGray, // Mudado para DarkGray para maior contraste
+                        tint = Color.DarkGray,
                         modifier = Modifier.size(18.dp)
                     )
                 }

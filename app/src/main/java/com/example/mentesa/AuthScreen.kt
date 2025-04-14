@@ -1,3 +1,4 @@
+// Segundo código (AuthScreen) sem comentários:
 package com.example.mentesa
 
 import android.app.Activity
@@ -57,7 +58,6 @@ fun AuthScreen(
     val authState by authViewModel.authState.collectAsState()
     val context = LocalContext.current
 
-    // Configurar cliente de login do Google
     val googleSignInClient = remember {
         GoogleSignIn.getClient(
             context,
@@ -68,7 +68,6 @@ fun AuthScreen(
         )
     }
 
-    // Configurar launcher para login do Google
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -77,11 +76,9 @@ fun AuthScreen(
             try {
                 val account = task.getResult(ApiException::class.java)
                 account?.idToken?.let { idToken ->
-                    // Chama método para autenticar com Firebase usando o token
                     authViewModel.signInWithGoogle(idToken)
                 }
             } catch (e: ApiException) {
-                // Manipula erro
                 Log.e("GoogleSignIn", "Google sign in failed", e)
                 errorMessage = "Falha na autenticação com Google: ${e.localizedMessage}"
             }
@@ -92,18 +89,16 @@ fun AuthScreen(
         when (authState) {
             is AuthState.Success -> onNavigateToChat()
             is AuthState.Error -> errorMessage = (authState as AuthState.Error).message
-            else -> { /* Outros estados não precisam de ação especial aqui */ }
+            else -> { }
         }
     }
 
-    // Container principal com fundo suave
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundColor),
         contentAlignment = Alignment.Center
     ) {
-        // Card principal para o formulário de login/cadastro
         Card(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
@@ -118,7 +113,6 @@ fun AuthScreen(
                 containerColor = Color.White
             )
         ) {
-            // Adicionando rolagem para garantir que todos os elementos sejam acessíveis
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -127,7 +121,6 @@ fun AuthScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Logo do app em destaque
                 Box(
                     modifier = Modifier
                         .size(100.dp)
@@ -145,7 +138,6 @@ fun AuthScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Título animado
                 AnimatedVisibility(
                     visible = true,
                     enter = fadeIn(animationSpec = tween(durationMillis = 500))
@@ -160,7 +152,6 @@ fun AuthScreen(
                     )
                 }
 
-                // Subtítulo com maior contraste
                 Text(
                     text = if (isLogin) "Entre na sua conta para continuar" else "Preencha os dados para se cadastrar",
                     fontSize = 16.sp,
@@ -170,7 +161,6 @@ fun AuthScreen(
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
-                // Campo de email com estilo personalizado
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
@@ -203,7 +193,6 @@ fun AuthScreen(
                         .padding(bottom = 8.dp)
                 )
 
-                // Campo de senha com estilo personalizado
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
@@ -237,7 +226,6 @@ fun AuthScreen(
                         .padding(bottom = 16.dp)
                 )
 
-                // Mensagem de erro com animação e alto contraste
                 AnimatedVisibility(
                     visible = errorMessage != null,
                     enter = fadeIn(animationSpec = tween(durationMillis = 300)),
@@ -249,24 +237,23 @@ fun AuthScreen(
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp)
                                 .background(
-                                    color = Color(0xFFE53935), // Vermelho mais vibrante
+                                    color = Color(0xFFE53935),
                                     shape = RoundedCornerShape(8.dp)
                                 )
-                                .padding(12.dp) // Padding interno maior
+                                .padding(12.dp)
                         ) {
                             Text(
                                 text = it,
-                                color = Color.White, // Texto branco para máximo contraste
-                                fontWeight = FontWeight.Bold, // Texto em negrito
-                                fontSize = 15.sp, // Tamanho de fonte maior
-                                textAlign = TextAlign.Center, // Centralizado para melhor leitura
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                textAlign = TextAlign.Center,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }
                 }
 
-                // Botão principal com formato mais arredondado
                 Button(
                     onClick = {
                         errorMessage = null
@@ -301,14 +288,12 @@ fun AuthScreen(
                     )
                 }
 
-                // Separador
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Usando Divider com background para evitar problemas de API
                     Divider(
                         modifier = Modifier
                             .weight(1f)
@@ -327,7 +312,6 @@ fun AuthScreen(
                     )
                 }
 
-                // Botão de login com Google com texto não quebrado
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -353,7 +337,7 @@ fun AuthScreen(
                             imageVector = googleIcon(),
                             contentDescription = "Logo do Google",
                             modifier = Modifier.size(24.dp),
-                            tint = Color.Unspecified // Mantém as cores originais
+                            tint = Color.Unspecified
                         )
 
                         Spacer(modifier = Modifier.width(12.dp))
@@ -363,13 +347,12 @@ fun AuthScreen(
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Medium,
                             color = TextColorDark,
-                            maxLines = 1,  // Garante que não quebre o texto
+                            maxLines = 1,
                             overflow = TextOverflow.Visible
                         )
                     }
                 }
 
-                // Alternância entre login e cadastro com contraste aumentado
                 TextButton(
                     onClick = { isLogin = !isLogin },
                     modifier = Modifier.padding(top = 16.dp)
@@ -382,7 +365,6 @@ fun AuthScreen(
                     )
                 }
 
-                // Carregamento com animação
                 if (authState is AuthState.Loading) {
                     CircularProgressIndicator(
                         modifier = Modifier.padding(top = 16.dp),
@@ -393,7 +375,6 @@ fun AuthScreen(
             }
         }
 
-        // Decoração visual com bolhas no fundo
         Box(
             modifier = Modifier
                 .size(120.dp)
@@ -414,6 +395,5 @@ fun AuthScreen(
     }
 }
 
-// Função que retorna o ícone do Google como ImageVector
 @Composable
 fun googleIcon() = ImageVector.vectorResource(id = R.drawable.ic_google_logo)

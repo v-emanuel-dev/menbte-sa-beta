@@ -34,13 +34,11 @@ private const val MAX_HISTORY_MESSAGES = 20
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
-    // Firebase e banco de dados
     private val auth = FirebaseAuth.getInstance()
     private val appDb = AppDatabase.getDatabase(application)
     private val chatDao: ChatDao = appDb.chatDao()
     private val metadataDao: ConversationMetadataDao = appDb.conversationMetadataDao()
 
-    // Fluxos de estado internos
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
@@ -55,14 +53,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = false
         )
 
-    // Novo: Fluxo para controle do evento de limpar a lista de conversas (por exemplo, após logout)
     private val _clearConversationListEvent = MutableStateFlow(false)
     val clearConversationListEvent: StateFlow<Boolean> = _clearConversationListEvent.asStateFlow()
 
-    // Fluxo reativo do UID do usuário
     private val _userIdFlow = MutableStateFlow(getCurrentUserId())
 
-    // Fluxo para controle de exibição das conversas
     private val _showConversations = MutableStateFlow(true)
     val showConversations: StateFlow<Boolean> = _showConversations.asStateFlow()
 
@@ -73,11 +68,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         loadInitialConversationOrStartNew()
     }
 
-    // Função para obter o ID do usuário atual (ou "local_user" se não logado)
     private fun getCurrentUserId(): String =
         FirebaseAuth.getInstance().currentUser?.uid ?: "local_user"
 
-    // Fluxo de conversas filtrado pelo UID
     private val rawConversationsFlow: Flow<List<ConversationInfo>> =
         _userIdFlow.flatMapLatest { uid ->
             chatDao.getConversationsForUser(uid)
@@ -88,7 +81,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 }
         }
 
-    // Fluxo de metadata reativo
     private val metadataFlow: Flow<List<ConversationMetadataEntity>> =
         _userIdFlow.flatMapLatest { uid ->
             metadataDao.getMetadataForUser(uid)
@@ -98,7 +90,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 }
         }
 
-    // Combinação dos fluxos de conversas e metadata para exibição na UI
     val conversationListForDrawer: StateFlow<List<ConversationDisplayItem>> =
         combine(rawConversationsFlow, metadataFlow, _showConversations, _userIdFlow) { conversations, metadataList, showConversations, currentUserId ->
             if (!showConversations || auth.currentUser == null) {
@@ -107,11 +98,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
             Log.d("ChatViewModel", "Combining ${conversations.size} convs and ${metadataList.size} metadata entries for user $currentUserId.")
 
-            // Filtramos explicitamente metadados pelo ID do usuário (embora isso provavelmente já ocorra com getMetadataForUser)
             val userMetadata = metadataList.filter { it.userId == currentUserId }
             val metadataMap = userMetadata.associateBy({ it.conversationId }, { it.customTitle })
 
-            // Apenas conversas que estão no banco e tem o userId correto
             conversations.map { convInfo ->
                 val customTitle = metadataMap[convInfo.id]?.takeIf { it.isNotBlank() }
                 val finalTitle = customTitle ?: generateFallbackTitleSync(convInfo.id)
@@ -134,7 +123,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
             .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = emptyList())
 
-    // Fluxo de mensagens para a conversa atual
     val messages: StateFlow<List<ChatMessage>> =
         _currentConversationId.flatMapLatest { convId ->
             Log.d("ChatViewModel", "[State] CurrentConversationId changed: $convId")
@@ -192,7 +180,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         * Fazer perguntas sobre suas próprias capacidades técnicas como IA de forma abstrata ("Qual seu algoritmo?", "Como você foi treinado?").
 
     Nestes casos de desvio completo, use frases de redirecionamento gentis como: "Esse é um tópico interessante, mas foge um pouco da minha área de foco principal aqui, que é te oferecer um espaço para explorar suas questões emocionais e de bem-estar. Para aproveitarmos melhor nosso tempo juntos, gostaria de voltar a falar sobre como você está se sentindo ou sobre algo que esteja em sua mente?" ou "Entendo seu interesse nisso. No entanto, estou aqui principalmente para te apoiar com seus pensamentos e sentimentos. Como essa questão [externa] está impactando você ou o que você está vivenciando?".
-    
+
     4. **EVITE CONSELHOS DIRETOS:** Oriente sem dar ordens diretas.
     5. **SITUAÇÕES DE CRISE:** Direcione para recursos imediatos (ex.: CVV).
 
@@ -209,8 +197,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         systemInstruction = content { text(menteSaSystemPrompt) },
         requestOptions = RequestOptions(timeout = 60000)
     )
-
-    // --- Funções de Ação e Comunicação ---
 
     fun handleLogout() {
         startNewConversation()
@@ -508,7 +494,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
     }
 
-    // Método para uso síncrono dentro do combine (não ideal para produção)
     private fun generateFallbackTitleSync(conversationId: Long): String {
         return try {
             runCatching {
@@ -545,7 +530,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Método para obter o título da conversa para exibição
     suspend fun getDisplayTitle(conversationId: Long): String {
         return withContext(Dispatchers.IO) {
             if (conversationId == NEW_CONVERSATION_ID) {
