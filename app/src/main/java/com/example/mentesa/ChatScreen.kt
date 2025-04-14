@@ -14,6 +14,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Menu
@@ -33,15 +35,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mentesa.ui.theme.*
+import dev.jeziellago.compose.markdowntext.MarkdownText
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import dev.jeziellago.compose.markdowntext.MarkdownText
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.ui.unit.sp
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -117,89 +116,109 @@ fun ChatScreen(
             )
         }
     ) {
+        // Esta modificação altera apenas a parte da Surface e Scaffold no ChatScreen.kt
+// Mantém toda a funcionalidade original, só adiciona um Box verde acima da TopBar
+
+// Parte modificada do ChatScreen.kt:
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
+            color = BackgroundColor
         ) {
-            Scaffold(
-                topBar = {
-                    CenterAlignedTopAppBar(
-                        title = {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.baseline_account_circle_24),
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = stringResource(id = R.string.app_name),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        },
-                        navigationIcon = {
-                            IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
-                                Icon(
-                                    Icons.Filled.Menu,
-                                    stringResource(R.string.open_drawer_description),
-                                    tint = Color.White
-                                )
-                            }
-                        },
-                        actions = {
-                            IconButton(
-                                onClick = {
-                                    if (currentUser != null) {
-                                        onLogout()
-                                    } else {
-                                        onLogin()
-                                    }
-                                },
-                                modifier = Modifier
-                                    .padding(end = 8.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))
-                            ) {
-                                Icon(
-                                    imageVector = if (currentUser != null) Icons.Default.Logout else Icons.Default.Login,
-                                    contentDescription = if (currentUser != null) "Sair" else "Entrar",
-                                    tint = Color.White
-                                )
-                            }
-                        },
-                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                            containerColor = PrimaryColor,
-                            titleContentColor = Color.White,
-                            navigationIconContentColor = Color.White,
-                            actionIconContentColor = Color.White
+            // Em vez do Scaffold diretamente, envolva-o em uma Column
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Box verde para criar o espaço com a cor desejada
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(0.dp) // Ajuste este valor conforme desejado
+                        .background(PrimaryColor) // Mesma cor da TopBar
+                )
+
+                // O Scaffold fica exatamente como estava antes, sem alterações
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    contentWindowInsets = WindowInsets(0),
+                    topBar = {
+                        // TopBar inalterada
+                        CenterAlignedTopAppBar(
+                            windowInsets = WindowInsets(0),
+                            title = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.baseline_account_circle_24),
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = stringResource(id = R.string.app_name),
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
+                                    Icon(
+                                        Icons.Filled.Menu,
+                                        stringResource(R.string.open_drawer_description),
+                                        tint = Color.White
+                                    )
+                                }
+                            },
+                            actions = {
+                                IconButton(
+                                    onClick = {
+                                        if (currentUser != null) {
+                                            onLogout()
+                                        } else {
+                                            onLogin()
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .padding(end = 8.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))
+                                ) {
+                                    Icon(
+                                        imageVector = if (currentUser != null) Icons.Default.Logout else Icons.Default.Login,
+                                        contentDescription = if (currentUser != null) "Sair" else "Entrar",
+                                        tint = Color.White
+                                    )
+                                }
+                            },
+                            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                                containerColor = PrimaryColor,
+                                titleContentColor = Color.White,
+                                navigationIconContentColor = Color.White,
+                                actionIconContentColor = Color.White
+                            )
                         )
-                    )
-                },
-                bottomBar = {
-                    MessageInput(
-                        message = userMessage,
-                        onMessageChange = { userMessage = it },
-                        onSendClick = {
-                            if (userMessage.isNotBlank()) {
-                                chatViewModel.sendMessage(userMessage)
-                                userMessage = ""
-                            }
-                        },
-                        isSendEnabled = !isLoading
-                    )
-                },
-                containerColor = MaterialTheme.colorScheme.background
-            ) { paddingValues ->
-                Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+                    },
+                    bottomBar = {
+                        MessageInput(
+                            message = userMessage,
+                            onMessageChange = { userMessage = it },
+                            onSendClick = {
+                                if (userMessage.isNotBlank()) {
+                                    chatViewModel.sendMessage(userMessage)
+                                    userMessage = ""
+                                }
+                            },
+                            isSendEnabled = !isLoading
+                        )
+                    },
+                    containerColor = BackgroundColor,
+                    contentColor = TextColorDark
+                ) { paddingValues ->
+                    // Conteúdo do chat inalterado
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
+                            .fillMaxSize()
+                            .padding(paddingValues)
                             .background(BackgroundColor)
                     ) {
                         LazyColumn(
@@ -217,23 +236,24 @@ fun ChatScreen(
                                 item { TypingBubbleAnimation(modifier = Modifier.padding(vertical = 4.dp)) }
                             }
                         }
-                    }
 
-                    errorMessage?.let { errorMsg ->
-                        Text(
-                            text = "Erro: $errorMsg",
-                            color = Color.White,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
-                                .background(
-                                    color = Color(0xFFE53935),
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                .padding(vertical = 8.dp, horizontal = 12.dp)
-                        )
+                        errorMessage?.let { errorMsg ->
+                            Text(
+                                text = "Erro: $errorMsg",
+                                color = Color.White,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .fillMaxWidth()
+                                    .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+                                    .background(
+                                        color = Color(0xFFE53935),
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                    .padding(vertical = 8.dp, horizontal = 12.dp)
+                            )
+                        }
                     }
                 }
             }
