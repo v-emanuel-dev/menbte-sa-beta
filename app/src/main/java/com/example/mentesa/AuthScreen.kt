@@ -1,4 +1,3 @@
-// Segundo código (AuthScreen) sem comentários:
 package com.example.mentesa
 
 import android.app.Activity
@@ -17,6 +16,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons // Import Icons
+import androidx.compose.material.icons.filled.Visibility // Import Ícone Visibilidade
+import androidx.compose.material.icons.filled.VisibilityOff // Import Ícone Não Visibilidade
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,7 +33,9 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType // Import KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation // Import VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -54,6 +58,7 @@ fun AuthScreen(
     var password by remember { mutableStateOf("") }
     var isLogin by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var passwordVisible by remember { mutableStateOf(false) } // <-- NOVO ESTADO
 
     val authState by authViewModel.authState.collectAsState()
     val context = LocalContext.current
@@ -101,7 +106,7 @@ fun AuthScreen(
     ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth(0.9f)
+                .fillMaxWidth(0.99f)
                 .padding(16.dp)
                 .shadow(
                     elevation = 4.dp,
@@ -193,6 +198,7 @@ fun AuthScreen(
                         .padding(bottom = 8.dp)
                 )
 
+                // --- CAMPO DE SENHA MODIFICADO ---
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
@@ -208,7 +214,7 @@ fun AuthScreen(
                         color = Color.Black
                     ),
                     singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(), // <-- MUDANÇA AQUI
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = Color.White,
@@ -218,13 +224,25 @@ fun AuthScreen(
                         focusedLabelColor = PrimaryColor,
                         cursorColor = PrimaryColor
                     ),
-                    keyboardOptions = KeyboardOptions.Default.copy(
+                    keyboardOptions = KeyboardOptions( // <-- MUDANÇA AQUI
+                        keyboardType = KeyboardType.Password,
                         imeAction = ImeAction.Done
                     ),
+                    trailingIcon = { // <-- ÍCONE ADICIONADO AQUI
+                        val image = if (passwordVisible)
+                            Icons.Filled.Visibility
+                        else Icons.Filled.VisibilityOff
+                        val description = if (passwordVisible) "Esconder senha" else "Mostrar senha"
+                        IconButton(onClick = {passwordVisible = !passwordVisible}){
+                            Icon(imageVector  = image, description)
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)
                 )
+                // --- FIM DO CAMPO DE SENHA MODIFICADO ---
+
 
                 AnimatedVisibility(
                     visible = errorMessage != null,
