@@ -204,7 +204,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     """.trimIndent()
 
     private val generativeModel = GenerativeModel(
-        modelName = "gemini-2.0-flash",
+        modelName = "gemini-2.5-pro-exp-03-25",
         apiKey = BuildConfig.GEMINI_API_KEY,
         systemInstruction = content { text(menteSaSystemPrompt) },
         requestOptions = RequestOptions(timeout = 60000)

@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,7 +23,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -38,6 +38,12 @@ import com.example.mentesa.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import dev.jeziellago.compose.markdowntext.MarkdownText
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -223,14 +229,17 @@ fun ChatScreen(
                     errorMessage?.let { errorMsg ->
                         Text(
                             text = "Erro: $errorMsg",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium,
+                            color = Color.White, // Mudança para branco para maior contraste
+                            style = MaterialTheme.typography.bodyMedium, // Aumentei para bodyMedium
+                            fontWeight = FontWeight.Bold, // Aumentei para Bold para maior visibilidade
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
-                                .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f))
-                                .padding(vertical = 4.dp, horizontal = 12.dp)
+                                .background(
+                                    color = Color(0xFFE53935), // Vermelho mais forte e vibrante
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .padding(vertical = 8.dp, horizontal = 12.dp) // Aumentei o padding vertical
                         )
                     }
                 }
@@ -307,6 +316,8 @@ fun ChatScreen(
 
 // Substitua a função MessageInput atual no seu ChatScreen.kt por esta versão corrigida:
 
+// Substitua a função MessageInput no ChatScreen.kt com esta versão expansível:
+
 @Composable
 fun MessageInput(
     message: String,
@@ -314,11 +325,22 @@ fun MessageInput(
     onSendClick: () -> Unit,
     isSendEnabled: Boolean
 ) {
-    // Versão alternativa sem shadow e sem espaço escuro
+    // Estado para controlar se o input está expandido
+    var isExpanded by remember { mutableStateOf(false) }
+
+    // Calcular se deve mostrar o botão de expansão baseado no conteúdo
+    val lineCount = if (message.isBlank()) 1 else message.count { it == '\n' } + 1
+    val showExpandButton = lineCount >= 2 || message.length > 80
+
+    // Altura do input baseada no estado
+    val minHeight = 56.dp
+    val maxHeight = 150.dp
+    val currentHeight = if (isExpanded) maxHeight else minHeight
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(BackgroundColor)  // Garante que o fundo seja da mesma cor do resto da tela
+            .background(BackgroundColor)
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Row(
@@ -328,9 +350,10 @@ fun MessageInput(
                     color = SurfaceColor,
                     shape = RoundedCornerShape(28.dp)
                 )
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Campo de texto
             TextField(
                 value = message,
                 onValueChange = onMessageChange,
@@ -339,16 +362,19 @@ fun MessageInput(
                         text = stringResource(R.string.message_input_placeholder),
                         style = MaterialTheme.typography.bodyLarge.copy(
                             color = Color.Gray,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 16.sp
                         )
                     )
                 },
                 textStyle = TextStyle(
                     fontWeight = FontWeight.Medium,
-                    color = Color.Black
+                    color = Color.Black,
+                    fontSize = 16.sp
                 ),
                 modifier = Modifier
-                    .weight(1f),
+                    .weight(1f)
+                    .heightIn(min = minHeight),
                 shape = RoundedCornerShape(24.dp),
                 colors = TextFieldDefaults.colors(
                     focusedIndicatorColor = Color.Transparent,
@@ -360,32 +386,66 @@ fun MessageInput(
                     cursorColor = PrimaryColor
                 ),
                 enabled = isSendEnabled,
-                maxLines = 5
+                maxLines = if (isExpanded) 8 else 3
             )
 
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (message.isNotBlank() && isSendEnabled)
-                            PrimaryColor
-                        else
-                            PrimaryColor.copy(alpha = 0.5f)
-                    ),
-                contentAlignment = Alignment.Center
+            // Coluna para os botões com espaçamento adequado
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                IconButton(
-                    onClick = onSendClick,
-                    enabled = message.isNotBlank() && isSendEnabled,
+                // Botão de expansão (apenas quando necessário)
+                if (showExpandButton) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        background(Color.LightGray.copy(alpha = 0.2f))
+                            .clickable { isExpanded = !isExpanded },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isExpanded) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = "Contrair campo de texto",
+                                tint = PrimaryColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowUp,
+                                contentDescription = "Expandir campo de texto",
+                                tint = PrimaryColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Botão de enviar completamente separado
+                Box(
+                    modifier = Modifier
+                        .padding(bottom = 2.dp) // Espaço extra na parte inferior
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (message.isNotBlank() && isSendEnabled)
+                                PrimaryColor
+                            else
+                                PrimaryColor.copy(alpha = 0.5f)
+                        )
+                        .clickable(enabled = message.isNotBlank() && isSendEnabled) {
+                            onSendClick()
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = stringResource(R.string.action_send),
                         tint = Color.White,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }

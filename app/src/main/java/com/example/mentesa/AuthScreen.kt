@@ -8,13 +8,14 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,7 +24,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
@@ -40,6 +40,8 @@ import com.example.mentesa.ui.theme.*
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 
 @Composable
 fun AuthScreen(
@@ -116,9 +118,11 @@ fun AuthScreen(
                 containerColor = Color.White
             )
         ) {
+            // Adicionando rolagem para garantir que todos os elementos sejam acessíveis
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -158,11 +162,11 @@ fun AuthScreen(
 
                 // Subtítulo com maior contraste
                 Text(
-                    text = if (isLogin) "Entre para continuar" else "Preencha os dados para se cadastrar",
+                    text = if (isLogin) "Entre na sua conta para continuar" else "Preencha os dados para se cadastrar",
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium, // Aumentado para Medium
+                    fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center,
-                    color = TextColorDark.copy(alpha = 0.9f), // Maior opacidade para melhor contraste
+                    color = TextColorDark.copy(alpha = 0.9f),
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
@@ -233,27 +237,32 @@ fun AuthScreen(
                         .padding(bottom = 16.dp)
                 )
 
-                // Mensagem de erro com animação
+                // Mensagem de erro com animação e alto contraste
                 AnimatedVisibility(
                     visible = errorMessage != null,
                     enter = fadeIn(animationSpec = tween(durationMillis = 300)),
                     exit = fadeOut(animationSpec = tween(durationMillis = 300))
                 ) {
                     errorMessage?.let {
-                        Text(
-                            text = it,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium,
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp)
                                 .background(
-                                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f),
+                                    color = Color(0xFFE53935), // Vermelho mais vibrante
                                     shape = RoundedCornerShape(8.dp)
                                 )
-                                .padding(8.dp)
-                        )
+                                .padding(12.dp) // Padding interno maior
+                        ) {
+                            Text(
+                                text = it,
+                                color = Color.White, // Texto branco para máximo contraste
+                                fontWeight = FontWeight.Bold, // Texto em negrito
+                                fontSize = 15.sp, // Tamanho de fonte maior
+                                textAlign = TextAlign.Center, // Centralizado para melhor leitura
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
 
@@ -318,30 +327,28 @@ fun AuthScreen(
                     )
                 }
 
-                // Botão de login com Google estilizado
-                OutlinedButton(
-                    onClick = {
-                        googleSignInLauncher.launch(googleSignInClient.signInIntent)
-                    },
+                // Botão de login com Google com texto não quebrado
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = Color.Gray.copy(alpha = 0.3f)
-                    ),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = TextColorDark
-                    )
+                        .height(56.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .border(
+                            width = 1.dp,
+                            color = Color.Gray.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .background(Color.White)
+                        .clickable {
+                            googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center,
-                        // Definindo um modifier de largura aqui para o conteúdo do botão
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.padding(horizontal = 16.dp)
                     ) {
-                        // Ícone do Google SVG inline
                         Icon(
                             imageVector = googleIcon(),
                             contentDescription = "Logo do Google",
@@ -351,13 +358,12 @@ fun AuthScreen(
 
                         Spacer(modifier = Modifier.width(12.dp))
 
-                        // Texto com largura máxima definida para evitar quebra
                         Text(
                             text = "Login com Google",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Medium,
-                            // Evita a quebra de linha do texto
-                            maxLines = 1,
+                            color = TextColorDark,
+                            maxLines = 1,  // Garante que não quebre o texto
                             overflow = TextOverflow.Visible
                         )
                     }
@@ -366,7 +372,7 @@ fun AuthScreen(
                 // Alternância entre login e cadastro com contraste aumentado
                 TextButton(
                     onClick = { isLogin = !isLogin },
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = 16.dp)
                 ) {
                     Text(
                         if (isLogin) "Não tem uma conta? Cadastre-se" else "Já tem uma conta? Faça login",

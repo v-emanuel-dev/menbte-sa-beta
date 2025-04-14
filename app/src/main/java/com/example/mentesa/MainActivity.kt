@@ -1,6 +1,9 @@
 package com.example.mentesa
 
+import android.animation.ObjectAnimator
 import android.os.Bundle
+import android.view.View
+import android.view.animation.AccelerateInterpolator
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -14,6 +17,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.core.animation.doOnEnd
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mentesa.ui.theme.MenteSaTheme
@@ -22,8 +26,26 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalAnimationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Instala a splash screen e habilita edge-to-edge
-        installSplashScreen()
+        // Instalar a splash screen antes de qualquer outra configuração
+        val splashScreen = installSplashScreen()
+
+        // Configurar a animação de saída da splash screen
+        splashScreen.setOnExitAnimationListener { splashScreenViewProvider ->
+            // Animação de fade-out ao sair da splash
+            val splashScreenView = splashScreenViewProvider.view
+            val fadeOut = ObjectAnimator.ofFloat(splashScreenView, View.ALPHA, 1f, 0f)
+            fadeOut.interpolator = AccelerateInterpolator()
+            fadeOut.duration = 500L
+
+            fadeOut.doOnEnd {
+                // Remover a splash view quando a animação terminar
+                splashScreenViewProvider.remove()
+            }
+
+            // Iniciar a animação
+            fadeOut.start()
+        }
+
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
@@ -48,8 +70,7 @@ class MainActivity : ComponentActivity() {
                     }
                 ) { paddingValues ->
                     Box(modifier = Modifier.padding(paddingValues)) {
-                        // Usar @OptIn para marcar o uso de API experimental
-                        // Já anotamos a classe inteira no início
+                        // Usando @OptIn para marcar o uso de API experimental
                         AnimatedContent(
                             targetState = showAuthScreen,
                             transitionSpec = {

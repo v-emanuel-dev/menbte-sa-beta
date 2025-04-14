@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Fundo circular branco -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@color/white" />
+            <size
+                android:width="108dp"
+                android:height="108dp" />
+        </shape>
+    </item>
+
+    <!-- Ajustando a referência ao ícone e garantindo que a cor seja aplicada -->
+    <item
+        android:drawable="@drawable/baseline_account_circle_24"
+        android:gravity="center"
+        android:width="72dp"
+        android:height="72dp"
+        android:tint="@color/primary" />
+</layer-list>
