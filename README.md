@@ -1,2 +1,1 @@
 # mente-sa
-# mente-sa
