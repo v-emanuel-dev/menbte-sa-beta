@@ -341,6 +341,11 @@ fun MessageInput(
     val maxHeight = 150.dp
     val currentHeight = if (isExpanded) maxHeight else minHeight
 
+    // Cores quando o input está desabilitado
+    val disabledContainerColor = PrimaryColor.copy(alpha = 0.15f) // Verde claro semi-transparente
+    val disabledCursorColor = PrimaryColor.copy(alpha = 0.6f)
+    val disabledTextColor = Color.DarkGray.copy(alpha = 0.7f)
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -351,7 +356,7 @@ fun MessageInput(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    color = SurfaceColor,
+                    color = if (isSendEnabled) SurfaceColor else disabledContainerColor,
                     shape = RoundedCornerShape(28.dp)
                 )
                 .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 8.dp),
@@ -364,7 +369,7 @@ fun MessageInput(
                     Text(
                         text = stringResource(R.string.message_input_placeholder),
                         style = MaterialTheme.typography.bodyLarge.copy(
-                            color = Color.Gray,
+                            color = if (isSendEnabled) Color.Gray else Color.DarkGray.copy(alpha = 0.6f),
                             fontWeight = FontWeight.Medium,
                             fontSize = 16.sp
                         )
@@ -372,7 +377,7 @@ fun MessageInput(
                 },
                 textStyle = TextStyle(
                     fontWeight = FontWeight.Medium,
-                    color = Color.Black,
+                    color = if (isSendEnabled) Color.Black else disabledTextColor,
                     fontSize = 16.sp
                 ),
                 modifier = Modifier
@@ -384,9 +389,10 @@ fun MessageInput(
                     unfocusedIndicatorColor = Color.Transparent,
                     disabledIndicatorColor = Color.Transparent,
                     errorIndicatorColor = Color.Transparent,
-                    focusedContainerColor = SurfaceColor,
-                    unfocusedContainerColor = SurfaceColor,
-                    cursorColor = PrimaryColor
+                    focusedContainerColor = if (isSendEnabled) SurfaceColor else disabledContainerColor,
+                    unfocusedContainerColor = if (isSendEnabled) SurfaceColor else disabledContainerColor,
+                    disabledContainerColor = disabledContainerColor,
+                    cursorColor = if (isSendEnabled) PrimaryColor else disabledCursorColor
                 ),
                 enabled = isSendEnabled,
                 maxLines = if (isExpanded) 8 else 3
@@ -403,22 +409,27 @@ fun MessageInput(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(Color.LightGray.copy(alpha = 0.2f))
-                            .clickable { isExpanded = !isExpanded },
+                            .background(
+                                if (isSendEnabled)
+                                    Color.LightGray.copy(alpha = 0.2f)
+                                else
+                                    PrimaryColor.copy(alpha = 0.15f)
+                            )
+                            .clickable(enabled = isSendEnabled) { isExpanded = !isExpanded },
                         contentAlignment = Alignment.Center
                     ) {
                         if (isExpanded) {
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowDown,
                                 contentDescription = "Contrair campo de texto",
-                                tint = PrimaryColor,
+                                tint = if (isSendEnabled) PrimaryColor else PrimaryColor.copy(alpha = 0.6f),
                                 modifier = Modifier.size(20.dp)
                             )
                         } else {
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowUp,
                                 contentDescription = "Expandir campo de texto",
-                                tint = PrimaryColor,
+                                tint = if (isSendEnabled) PrimaryColor else PrimaryColor.copy(alpha = 0.6f),
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -431,7 +442,9 @@ fun MessageInput(
                         .size(48.dp)
                         .clip(CircleShape)
                         .background(
-                            if (message.isNotBlank() && isSendEnabled)
+                            if (!isSendEnabled)
+                                PrimaryColor.copy(alpha = 0.4f) // Verde claro quando desabilitado (esperando resposta)
+                            else if (message.isNotBlank())
                                 PrimaryColor
                             else
                                 PrimaryColor.copy(alpha = 0.5f)
@@ -519,7 +532,7 @@ fun MessageBubble(message: ChatMessage) {
             ) {
                 Card(
                     modifier = Modifier
-                        .widthIn(max = LocalConfiguration.current.screenWidthDp.dp * 0.75f),
+                        .widthIn(max = LocalConfiguration.current.screenWidthDp.dp * 0.88f), // Aumentado para 88% da largura da tela
                     shape = botShape,
                     colors = CardDefaults.cardColors(
                         containerColor = BotBubbleColor
