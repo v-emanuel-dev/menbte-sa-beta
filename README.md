@@ -20,22 +20,17 @@ As informações coletadas são utilizadas para:
 ## 3. Compartilhamento de Dados
 O Mente Sã **não compartilha, vende ou divulga suas informações pessoais** com terceiros, exceto quando exigido por lei ou para cumprir obrigações legais.
 
-## 4. Armazenamento e Proteção
-Todos os dados são armazenados de forma segura, utilizando criptografia sempre que possível. Adotamos medidas para prevenir acesso não autorizado, uso indevido ou alterações nos dados dos usuários.
-
-## 5. Direitos do Usuário
+## 4. Direitos do Usuário
 O usuário pode:
 
-- Solicitar a exclusão dos seus dados armazenados;
-- Solicitar uma cópia dos dados coletados;
 - Encerrar sua conta a qualquer momento.
 
 Para isso, entre em contato pelo email de suporte: **contato.mentesa.app@gmail.com**
 
-## 6. Dados de Crianças
+## 5. Dados de Crianças
 O Mente Sã **não se destina a crianças menores de 13 anos**. Não coletamos intencionalmente dados pessoais de crianças. Caso tomemos conhecimento de que dados de uma criança foram coletados sem consentimento dos pais ou responsáveis, esses dados serão imediatamente removidos.
 
-## 7. Alterações na Política
+## 6. Alterações na Política
 Podemos atualizar esta Política de Privacidade periodicamente. Recomendamos que o usuário revise esta página com frequência. Notificaremos alterações significativas por meio do app.
 
 **Data da última atualização:** 14 de abril de 2025
